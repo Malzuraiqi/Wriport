@@ -1,0 +1,40 @@
+//Providers (providers.dart)
+//  evaluationServiceProvider  -> Fake or Gemini (the only swap point)
+//  challengesProvider         -> list of challenges
+//  attemptControllerProvider  -> AttemptController
+//  themeModeProvider          -> ThemeMode (system / light / dark)
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'domain/services/evaluation_service.dart';
+import 'data/services/fake_evaluation_service.dart';
+import 'data/repositories/challenge_repository.dart';
+import 'domain/models/challenge.dart';
+import 'state/attempt_controller.dart';
+import 'state/attempt_state.dart';
+
+// learning: providors is read-only, but to manage state that changes over time and
+// triggers UI rebuilds, convert it to extend Notifier.
+
+class Providers {
+  // Provider for the evaluation service
+  static final evaluationServiceProvider = Provider<EvaluationService>((ref) {
+    return FakeEvaluationService();
+  });
+
+  // Provider for the list of challenges
+  static final challengesProvider = Provider<List<Challenge>>((ref) {
+    return ChallengeRepository().getChallenges(Category.email);
+  });
+
+  // Provider for the AttemptController
+  static final attemptControllerProvider = 
+    NotifierProvider<AttemptController, AttemptState>(AttemptController.new);
+
+  // Provider for the current theme mode (system / light / dark).
+  // ADDITIVE ONLY: none of the providers above were modified.
+  static final themeModeProvider = StateProvider<ThemeMode>(
+    (ref) => ThemeMode.system,
+  );
+}
