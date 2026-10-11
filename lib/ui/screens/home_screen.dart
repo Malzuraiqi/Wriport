@@ -38,20 +38,21 @@ class HomeScreen extends ConsumerWidget {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar:   AppBar(
         title: const Text('Wriport'),
         actions: [
           IconButton(
             tooltip: themeMode == ThemeMode.dark ? 'Switch to light mode' : 'Switch to dark mode',
             onPressed: () {
-              ref.read(Providers.themeModeProvider.notifier).state =
-                  themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+              ref.read(Providers.themeModeProvider.notifier).changeTheme(
+                themeMode== ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+              );
             },
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: Icon(
                 themeMode == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                key: ValueKey(themeMode),
+                key: ValueKey<ThemeMode>(themeMode),
               ),
             ),
           ),
