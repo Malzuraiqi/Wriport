@@ -12,11 +12,11 @@ class FakeEvaluationService implements EvaluationService {
     return Future.delayed(Duration(seconds: 2), () {
       return FeedBack(
         attemptId: attempt.id,
-        overallScore: 85,
+        overallScore: 95,
         criteria: [
-          CriterionScore(name: 'Clarity', score: 90, comment: 'The writing is clear and easy to understand.'),
-          CriterionScore(name: 'Grammar', score: 80, comment: 'There are a few grammar errors.'),
-          CriterionScore(name: 'Tone', score: 85, comment: 'The tone is appropriate for the audience.'),
+          CriterionScore(name: 'Clarity', score: 50, comment: 'The writing is clear and easy to understand.'),
+          CriterionScore(name: 'Grammar', score: 20, comment: 'There are a few grammar errors.'),
+          CriterionScore(name: 'Tone', score: 100, comment: 'The tone is appropriate for the audience.'),
         ],
         strengths: ['Clear structure', 'Good tone'],
         improvements: ['Check grammar', 'Add more examples'],

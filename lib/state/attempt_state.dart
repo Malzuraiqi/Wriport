@@ -1,3 +1,5 @@
+import 'package:wriport/core/app_constants.dart';
+
 import '../domain/models/attempt.dart';
 import '../domain/models/feedback.dart';
 
@@ -21,6 +23,13 @@ class AttemptState {
   final List<FeedBack> feedbacks;
   final AttemptStatus status;
   final String? errorMessage;
+
+  bool get canAttempt => attempts.length < AppConstants.maxAttempts;
+  FeedBack get latestFeedback => feedbacks.last;
+  FeedBack? get previousFeedback { 
+    if (feedbacks.length < 2) return null; 
+    return feedbacks[feedbacks.length - 2];
+  }
 
   // Factory method to create an initial state
   factory AttemptState.initial() {

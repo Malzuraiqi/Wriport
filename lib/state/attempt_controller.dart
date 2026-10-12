@@ -1,3 +1,5 @@
+import 'package:wriport/core/app_constants.dart';
+
 import '../domain/models/attempt.dart';
 import 'attempt_state.dart';
 import '../domain/models/challenge.dart';
@@ -14,9 +16,16 @@ class AttemptController extends Notifier<AttemptState> {
   AttemptState build() { // the initial state when first accessed
     return AttemptState.initial();
   }
-
   // Method to submit an attempt
   Future<void> submit(Challenge challenge, String text) async {
+    if (!state.canAttempt) {
+      state = state.copyWith(
+        status: AttemptStatus.error,
+        errorMessage: "You have reached the maximum of ${AppConstants.maxAttempts} attempts.",
+      );
+      return;
+    }
+
     // Create a new Attempt object
     final attempt = Attempt(
       id: state.attempts.length + 1,

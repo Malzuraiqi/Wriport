@@ -203,6 +203,6 @@ To work on the UI without using API calls, open `lib/providers.dart` and make `e
 
 ## Author and license
 
-**Author:** Mohammed Hesham
-**Context:** Built as a learning project alongside a Software Architecture course
+**Author:** Mohammed Hesham\
+**Context:** Built as a learning project alongside a Software Architecture course\
 **License:** Copyright (c) 2026 Mohammed Hesham. All rights reserved.
