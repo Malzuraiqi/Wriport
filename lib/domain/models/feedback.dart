@@ -11,14 +11,14 @@ class FeedBack {
   });
 
   // Define properties for each field
-  int? attemptId;
+  final int attemptId;
   final int overallScore;
   final List<CriterionScore> criteria;
   final List<String> strengths;
   final List<String> improvements;
 
   // Factory method to create Feedback from JSON
-  factory FeedBack.fromJson(Map<String, dynamic> json) {
+  factory FeedBack.fromJson(Map<String, dynamic> json, {required int attemptId}) {
     final criteriaList = json['criteria'] as List? ?? [];
 
     int sum = 0;
@@ -32,12 +32,12 @@ class FeedBack {
     int finalScore = avg.clamp(0, 100);
 
     return FeedBack(
-      attemptId: null,
+      attemptId: attemptId,
       overallScore: finalScore,
       criteria: (json['criteria'] as List)
           .map((item) => CriterionScore(
                 name: item['name'],
-                score: (item['score'] as num).toInt(),
+                score: ((item['score'] as num).toInt()).clamp(0, 100),
                 comment: item['comment'],
               ))
           .toList(),

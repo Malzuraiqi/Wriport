@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wriport/core/app_constants.dart';
+import 'package:wriport/domain/models/criterion_score.dart';
 import 'package:wriport/domain/models/feedback.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/state/attempt_state.dart';
@@ -101,9 +102,16 @@ class FeedbackScreen extends ConsumerWidget {
                         title: feedback.criteria[i].name,
                         score: feedback.criteria[i].score,
                         comment: feedback.criteria[i].comment,
-                        previousScore: (hasPrevious && i < prevFeedback.criteria.length)
-                            ? prevFeedback.criteria[i].score
-                            : null,
+                        previousScore: () {
+                          if (!hasPrevious) return null;
+
+                          final matchingPrevCriterion = prevFeedback.criteria.firstWhere(
+                            (prev) => prev.name.trim().toLowerCase() == feedback.criteria[i].name.trim().toLowerCase(),
+                            orElse: () => CriterionScore(name: '', score: -1, comment: ''), // if not found
+                          );
+
+                          return matchingPrevCriterion.score != -1 ? matchingPrevCriterion.score : null;
+                        }(),
                       ),
                       if (i < feedback.criteria.length - 1) 
                         const SizedBox(height: 24), // Spacing between criteria
@@ -135,12 +143,16 @@ class FeedbackScreen extends ConsumerWidget {
               ],
             );
 
-            final actions = FilledButton.icon(
-              onPressed: attemptState.attempts.length >= AppConstants.maxAttempts 
-              ? null 
-              : () => Navigator.pop(context),
+            final tryagainButton = FilledButton.icon(
+              onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Try again'),
+            );
+
+            final restartButton = FilledButton.icon(
+              onPressed: () => Navigator.popUntil(context, ModalRoute.withName('/challenges')), 
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text("Back to challenges")
             );
 
             return SingleChildScrollView(
@@ -154,7 +166,7 @@ class FeedbackScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AttemptsPill(attemptState: attemptState),
+                      AttemptsPill(displayAttemptNumber: attemptState.attempts.length),
                       const SizedBox(height: 24),
                       scoreHeader,
                       const SizedBox(height: 24),
@@ -178,9 +190,11 @@ class FeedbackScreen extends ConsumerWidget {
                             ? Alignment.centerRight
                             : Alignment.center,
                         child: Column(children: [
-                          actions,
+                          if (attemptState.canAttempt) tryagainButton,
+                          const SizedBox(height: 12,),
+                          restartButton,
                           const SizedBox(height: 12),
-                          OutlinedButton.icon(
+                          TextButton.icon(
                             onPressed: () {
                               showDialog(
                                 context: context,
@@ -195,7 +209,7 @@ class FeedbackScreen extends ConsumerWidget {
                           SizedBox(height: 10,),
                           Text(
                             attemptState.attempts.length >= AppConstants.maxAttempts 
-                            ? 'max attempts reached please restart the challenge or choose another one' 
+                            ? 'max attempts reached' 
                             : '',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context).colorScheme.error,
@@ -674,7 +688,7 @@ class _HistoryCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${c.score}/25',
+                            '${c.score}/100',
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: scoreColor(scheme, c.score),

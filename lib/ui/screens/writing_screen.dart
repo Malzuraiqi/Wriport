@@ -59,7 +59,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   Future<void> _submit(Challenge challenge) async {
     await ref
         .read(Providers.attemptControllerProvider.notifier)
-        .submit(challenge, _textController.text);
+        .submit(challenge, _textController.text, _wordCount);
 
     if (!context.mounted) return;
 
@@ -95,7 +95,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     final scheme = Theme.of(context).colorScheme;
     final attemptState = ref.watch(Providers.attemptControllerProvider);
     final isLoading = attemptState.status == AttemptStatus.loading;
-    final canSubmit = !isLoading && _wordCount >= challenge.minWords;
+    final canSubmit = (!isLoading && _wordCount >= challenge.minWords) && attemptState.canAttempt;
 
     return PopScope(
       canPop: false,
@@ -130,7 +130,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AttemptsPill(attemptState: attemptState),
+                        AttemptsPill(displayAttemptNumber: attemptState.attempts.length + 1,),
                         const SizedBox(height: 24,),
                         // Instructions panel
                         InfoSectionCard(
@@ -194,12 +194,15 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
                           const SizedBox(height: 12),
                         ],
                         FilledButton.icon(
-                          onPressed: canSubmit ? () => _submit(challenge) : null,
+                          onPressed: (isLoading || !canSubmit) ? null : () => _submit(challenge),
                           icon: isLoading
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Icon(Icons.send_outlined, size: 18),
                           label: Text(isLoading ? 'Evaluating...' : 'Submit'),

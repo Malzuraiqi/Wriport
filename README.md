@@ -4,7 +4,7 @@
 
 Wriport is a Flutter app where you complete real-world writing challenges (emails, blog posts) and receive AI feedback on your work. The AI acts as a **coach, not a ghostwriter**: it scores your writing and explains how to improve it, but it never rewrites the text for you.
 
-**Current version:** `v0.1` (Increment 1: core writing loop)
+**Current version:** `v0.2` (Increment 2: revision loop)
 
 ---
 
@@ -34,25 +34,33 @@ Most AI writing tools write *for* you. Wriport does the opposite: you write, and
 - a list of strengths
 - a list of concrete improvements
 
-Then you rewrite and try again.
+Then you rewrite and try again, and the app shows whether you actually improved.
 
 ## Features
 
-**Implemented (v0.1)**
+**Implemented**
 
 - Challenge lists for two categories: Email and Blog Post
+- Writing screen with instructions, tone and word-range chips, and a live word counter
 - Real AI evaluation through Google Gemini
-- Responsive layout
+- Feedback screen with an animated overall score, per-criterion scores, strengths and improvements
+- **Revision loop (v0.2):**
+  - up to 3 attempts per challenge
+  - your previous text stays in the editor so you revise instead of starting over
+  - previous improvements are shown while you rewrite
+  - current vs previous score comparison, with the difference per attempt
+  - attempt history with expandable details
+- Responsive layout 
 - Loading and error handling, including a safe fallback when the AI call fails
-- Basic protection against prompt injection
+- Basic protection against prompt injection 
 
 **Not yet implemented:** see the [Roadmap](#roadmap).
 
 ## Screenshots
 
-| Home | Writing | Feedback |
-|------|---------|----------|
-| ![Home Screen](/docs/screenshots/HomeScreen.png) | ![Writing Screen](/docs/screenshots/WritingScreen.png) | ![Feedback Screen](/docs/screenshots/FeedbackScreen.png) |
+| Home | Writing | Feedback | History |
+|------|---------|----------|---------|
+| ![Home Screen](/docs/screenshots/HomeScreen.png) | ![Writing Screen](/docs/screenshots/WritingScreen.png) | ![Feedback Screen](/docs/screenshots/FeedbackScreen.png) | ![Histor Overlay](/docs/screenshots/HistoryOverlay.png) |
 
 ## Tech stack
 
@@ -64,7 +72,7 @@ Then you rewrite and try again.
 | Config | `flutter_dotenv` | Keeps the API key out of source code |
 | Navigation | `Navigator` (go_router is installed and planned) | Enough for the current number of screens |
 
-> **Note:** the `google_generative_ai` package is deprecated by Google. It still works for development, and it is isolated behind an interface so it can be replaced by editing a single file. See [Known limitations](#known-limitations).
+> **Note:** the `google_generative_ai` package is deprecated by Google. It still works for development. See [Known limitations](#known-limitations).
 
 ## Architecture
 
@@ -91,9 +99,10 @@ The app is split into four layers. Each layer only depends on the ones below it.
 | `EvaluationService` | Domain | Interface: `evaluate(Challenge, Attempt) -> Future<FeedBack>` |
 | `EvaluationException` | Domain | The single error type services throw |
 | `GeminiEvaluationService` | Data | Builds the prompt, calls Gemini, parses the JSON reply |
-| `FakeEvaluationService` | Data | Returns hardcoded feedback for UI work and tests |
+| `FakeEvaluationService` | Data | Returns hardcoded feedback for UI work |
 | `ChallengeRepository` | Data | Provides challenges per category (hardcoded for now) |
-| `AttemptController` / `AttemptState` | State | Holds attempts, feedback and loading/error status |
+| `AttemptController` / `AttemptState` | State | Holds attempts, feedback, attempt limit and loading/error status |
+| `AppConstants` | Core | App-wide constants (maximum attempts) |
 
 ### Data flow (one submission)
 
@@ -113,6 +122,8 @@ lib/
 ├── app.dart                          MaterialApp and theme wiring
 ├── router.dart                       Reserved for go_router (planned)
 ├── providers.dart                    All Riverpod providers (service swap point)
+├── core/
+│   └── app_constants.dart
 ├── domain/
 │   ├── models/
 │   │   ├── challenge.dart
@@ -138,10 +149,18 @@ lib/
     │   ├── writing_screen.dart
     │   └── feedback_screen.dart
     ├── widgets/
+    │   ├── attempts_pill.dart
+    │   ├── info_section_card.dart
     │   ├── score_card.dart
     │   └── word_counter.dart
     └── theme/
         └── app_theme.dart
+test/
+├── test_helpers.dart                 Shared builders
+├── attempt_test.dart
+├── attempt_state_test.dart
+├── attempt_controller_test.dart
+└── feedback_test.dart
 ```
 
 ## Getting started
@@ -185,6 +204,37 @@ lib/
 
 To work on the UI without using API calls, open `lib/providers.dart` and make `evaluationServiceProvider` return `FakeEvaluationService()` instead of `GeminiEvaluationService()`. It waits two seconds and returns fixed feedback.
 
+## Testing
+
+Run all tests:
+
+```bash
+flutter test
+```
+
+Run one file:
+
+```bash
+flutter test test/attempt_controller_test.dart
+```
+
+### What is covered
+
+| Test file | What it verifies |
+|-----------|------------------|
+| `attempt_test.dart` | `Attempt.wordCount` for normal text, extra spaces, newlines and tabs, empty and whitespace-only text, punctuation |
+| `feedback_test.dart` | `FeedBack.fromJson` parses valid JSON; overall score is the rounded-down average; decimal scores are accepted; overall score is clamped to 0-100; missing lists default to empty; missing criteria throws |
+| `attempt_state_test.dart` | Initial state; `canAttempt` against the attempt limit; `latestFeedback` and `previousFeedback`; `copyWith` keeps untouched fields |
+| `attempt_controller_test.dart` | Successful submit stores attempt and feedback; loading status while waiting; attempt numbers increase; a failing service sets the error status and stores nothing; a failed submit does not use up an attempt; submitting past the limit is refused without calling the service; `reset()` clears everything |
+
+
+>29 tests passing as of 2026-10-14: 00:03 +29: All tests passed!   
+
+### Not tested yet
+
+- Widget (UI) tests
+- The real `GeminiEvaluationService` (it needs a network and a key; an integration test is planned)
+
 ## Development approach
 
 - **Agile as the philosophy:** build the most valuable thing, test it, learn, adjust.
@@ -192,14 +242,27 @@ To work on the UI without using API calls, open `lib/providers.dart` and make `e
 - **Vertical slices:** each increment builds one full path through the system (UI to AI to feedback) instead of one layer at a time.
 - **Replaceable technologies:** AI provider, storage and navigation sit behind boundaries so they can change without rewrites.
 - **Git workflow:** one branch per increment, merged when it is working, and tagged (`v0.1`, `v0.2`, ...).
+- **UI workflow:** screens are designed in Figma, and the widget code is generated from the designs and then reviewed. State, logic and tests are written by hand.
+
+## Roadmap
+
+- [x] **Increment 0:** Foundation (project, layers, interface, fake service)
+- [x] **Increment 1:** Core loop (one writing evaluation from start to finish) `v0.1`
+- [x] **Increment 2:** Revision loop (attempt limit, previous attempts, comparing feedback) `v0.2`
+- [ ] **Increment 3:** More categories (a category should be data, not new code)
+- [ ] **Increment 4:** Backend, accounts and persistence (secure AI calls, replace deprecated SDK, go_router, saved history)
+- [ ] **Increment 5:** Progress tracking (averages, improvement over time, common weaknesses)
+
+**Out of scope for now:** social features, custom-trained models, multi-platform polish.
 
 ## Known limitations
 
-- The Gemini SDK in use is deprecated and will be replaced in v0.4.
-- The API key ships with the app (development only).
+- The Gemini SDK in use is deprecated and will be replaced in Increment 4.
+- The API key ships with the app (development only, see the security note).
 - Challenges are hardcoded; there is no storage, so attempts are lost when the app closes.
 - Feedback quality depends on the model and can vary between runs.
-- English writing only.
+- The AI is not told about previous attempts, so it does not judge whether earlier feedback was addressed.
+- English writing only. [FILL IN: confirm or change]
 
 ## Author and license
 

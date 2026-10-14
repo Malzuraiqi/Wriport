@@ -17,18 +17,18 @@ class GeminiEvaluationService implements EvaluationService {
     )
   );
 
-  Future<FeedBack?> _generateEvaluation(String prompt) async {
-      try {
-        final response = await _model.generateContent([Content.text(prompt),]);
-        final jsonText = response.text;
-        if (jsonText == null) return null;
+  Future<FeedBack?> _generateEvaluation(String prompt, int attemptId) async {
+    try {
+      final response = await _model.generateContent([Content.text(prompt),]);
+      final jsonText = response.text;
+      if (jsonText == null) return null;
 
-        final Map<String, dynamic> decodedJson = jsonDecode(jsonText);
-        final feedback = FeedBack.fromJson(decodedJson);
-        return feedback;
-      } catch (e) {
-        throw EvaluationException('Error generating evaluation: $e');
-      }
+      final Map<String, dynamic> decodedJson = jsonDecode(jsonText);
+      final feedback = FeedBack.fromJson(decodedJson, attemptId: attemptId);
+      return feedback;
+    } catch (e) {
+      throw EvaluationException('Error generating evaluation: $e');
+    }
   }
 
   @override
@@ -82,12 +82,12 @@ class GeminiEvaluationService implements EvaluationService {
     }
     """;
     
-    final feedback = await _generateEvaluation(prompt);
+    final feedback = await _generateEvaluation(prompt, attempt.id);
     
     if (feedback == null) {
       throw EvaluationException('Failed to generate feedback content from Gemini.');
     }
-    feedback.attemptId = attempt.id;
+
     return feedback;
   }
 

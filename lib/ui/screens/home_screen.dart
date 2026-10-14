@@ -31,6 +31,7 @@ class HomeScreen extends ConsumerWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
+            settings: const RouteSettings(name: '/challenges'),
             builder: (context) => ChallengeScreen(category: category),
           ),
         ),

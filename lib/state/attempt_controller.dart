@@ -1,4 +1,5 @@
 import 'package:wriport/core/app_constants.dart';
+import 'package:wriport/domain/services/evaluation_exception.dart';
 
 import '../domain/models/attempt.dart';
 import 'attempt_state.dart';
@@ -17,7 +18,7 @@ class AttemptController extends Notifier<AttemptState> {
     return AttemptState.initial();
   }
   // Method to submit an attempt
-  Future<void> submit(Challenge challenge, String text) async {
+  Future<void> submit(Challenge challenge, String text, int wordCount) async {
     if (!state.canAttempt) {
       state = state.copyWith(
         status: AttemptStatus.error,
@@ -32,7 +33,8 @@ class AttemptController extends Notifier<AttemptState> {
       challengeId: challenge.id,
       text: text,
       createdAt: DateTime.now(),
-      attemptNumber: state.attempts.length + 1
+      attemptNumber: state.attempts.length + 1,
+      wordCount: wordCount
     );
 
     // Update state to loading
@@ -49,11 +51,16 @@ class AttemptController extends Notifier<AttemptState> {
         feedbacks: [...state.feedbacks, feedback],
         status: AttemptStatus.idle,
       );
+    } on EvaluationException catch (e) {
+      state = state.copyWith(
+        status: AttemptStatus.error,
+        errorMessage: e.message,
+      );
     } catch (e) {
       // Update state to error if evaluation fails
       state = state.copyWith(
         status: AttemptStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: 'Something went wrong. Please try again later.',
       );
     }
   }
