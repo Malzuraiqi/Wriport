@@ -123,16 +123,6 @@ class _CategoryCard extends StatelessWidget {
   final Category category;
   final VoidCallback onTap;
 
-  IconData get _icon => switch (category) {
-        Category.email => Icons.mail_outline,
-        Category.blogPost => Icons.article_outlined,
-      };
-
-  String get _description => switch (category) {
-        Category.email => 'Master professional and personal emails.',
-        Category.blogPost => 'Write engaging, informative blog posts.',
-      };
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -149,7 +139,7 @@ class _CategoryCard extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: scheme.primaryContainer,
-                child: Icon(_icon, color: scheme.onPrimaryContainer),
+                child: Icon(category.icon, color: scheme.onPrimaryContainer),
               ),
               const SizedBox(height: 16),
               Text(
@@ -160,7 +150,7 @@ class _CategoryCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                _description,
+                category.description,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

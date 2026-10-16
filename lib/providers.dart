@@ -6,7 +6,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wriport/data/services/fake_evaluation_service.dart';
 import 'package:wriport/data/services/gemini_evaluation_service.dart';
 import 'package:wriport/ui/theme/app_theme.dart';
 import 'domain/services/evaluation_service.dart';
@@ -21,12 +20,12 @@ import 'state/attempt_state.dart';
 class Providers {
   // Provider for the evaluation service
   static final evaluationServiceProvider = Provider<EvaluationService>((ref) {
-    return FakeEvaluationService();
+    return GeminiEvaluationService();
   });
 
   // Provider for the list of challenges
-  static final challengesProvider = Provider<List<Challenge>>((ref) {
-    return ChallengeRepository().getChallenges(Category.email);
+  static final challengesProvider = Provider.family<List<Challenge>, Category>((ref, category) {
+    return ChallengeRepository().getChallenges(category);
   });
 
   // Provider for the AttemptController

@@ -1,12 +1,13 @@
+import 'package:wriport/domain/models/criterion.dart';
+
 class CriterionScore {
-  // name (e.g "Clarity"), score (0-100), comment
   CriterionScore({
-    required this.name,
+    required this.criterion,
     required this.score,
-    required this.comment,
+    required this.comment
   });
 
-  final String name;
+  final Criterion criterion;
   final int score;
   final String comment;
 }

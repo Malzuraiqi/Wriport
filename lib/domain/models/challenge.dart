@@ -1,6 +1,8 @@
 // this class (Challenge) describes what a challenge contains.
+import 'package:flutter/material.dart';
+import 'package:wriport/domain/models/criterion.dart';
+
 class Challenge {
-  // id, category, title, instructions, tone, minWords, maxWords
   Challenge({
     required this.id,
     required this.category,
@@ -11,7 +13,6 @@ class Challenge {
     required this.maxWords,
   });
 
-  // Define properties for each field
   final int id;
   final Category category;
   final String title;
@@ -23,10 +24,65 @@ class Challenge {
 
 enum Category {
   // Define categories for challenges
-  email('Email'),
-  blogPost('Blog Post');
+  email(
+    label: 'Email',
+    description: 'Direct digital messages sent for professional or personal updates',
+    criteria: [...Criteria.core, Criteria.conciseness],
+    icon: Icons.mail_outline,
+  ),
+  blogPost(
+    label: 'Blog Post',
+    description: 'Engaging, informal online articles sharing insights, guides, or opinions.',
+    criteria: [...Criteria.core, Criteria.structure],
+    icon: Icons.article_outlined,
+  ),
+  prompt(
+    label: 'Prompt',
+    description: 'Structured instructions guiding AI models to generate specific outputs.',
+    criteria: [...Criteria.core, Criteria.completeness, Criteria.conciseness],
+    icon: Icons.smart_toy_outlined,
+  ),
+  report(
+    label: 'Report',
+    description: 'Formal, data-driven documents analyzing specific facts or findings.',
+    criteria: [...Criteria.core, Criteria.structure, Criteria.completeness],
+    icon: Icons.analytics_outlined,
+  ),
+  socialMediaPost(
+    label: 'Social Media Post',
+    description: 'Brief, highly engaging copy optimized to drive audience interaction.',
+    criteria: [...Criteria.core, Criteria.conciseness, Criteria.structure],
+    icon: Icons.campaign_outlined,
+  ),
+  essay(
+    label: 'Essay',
+    description: 'Structured academic prose arguing a specific thesis or perspective.',
+    criteria: [...Criteria.core, Criteria.structure],
+    icon: Icons.history_edu,
+  ),
+  productDescription(
+    label: 'Product Description',
+    description: 'Compelling copy highlights features to convert readers into buyers.',
+    criteria: [...Criteria.core, Criteria.conciseness, Criteria.completeness],
+    icon: Icons.shopping_bag_outlined,
+  ),
+  technicalDocumentation(
+    label: 'Technical Documentation',
+    description: 'Clear instructions explaining how to use software or systems.',
+    criteria: [...Criteria.core, Criteria.structure, Criteria.completeness],
+    icon: Icons.integration_instructions_outlined,
+  );
+
 
   final String label;
+  final String description;
+  final IconData icon;
+  final List<Criterion> criteria;
 
-  Category(this.label);
+  const Category({
+    required this.label, 
+    required this.description, 
+    required this.criteria,
+    required this.icon,
+  });
 }

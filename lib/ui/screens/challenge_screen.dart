@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/ui/screens/writing_screen.dart';
-import '../../data/repositories/challenge_repository.dart';
 import '../../domain/models/challenge.dart';
 
 class ChallengeScreen extends ConsumerWidget {
@@ -17,7 +16,7 @@ class ChallengeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final challenges = ChallengeRepository().getChallenges(category);
+    final challenges = ref.watch(Providers.challengesProvider(category));
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(

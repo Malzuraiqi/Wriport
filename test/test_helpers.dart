@@ -6,6 +6,7 @@
 
 import 'package:wriport/domain/models/attempt.dart';
 import 'package:wriport/domain/models/challenge.dart';
+import 'package:wriport/domain/models/criterion.dart';
 import 'package:wriport/domain/models/criterion_score.dart';
 import 'package:wriport/domain/models/feedback.dart';
 
@@ -42,9 +43,9 @@ FeedBack buildFeedback({int attemptId = 1, int overall = 80}) {
     attemptId: attemptId,
     overallScore: overall,
     criteria: [
-      CriterionScore(name: 'Grammar', score: 80, comment: 'ok'),
-      CriterionScore(name: 'Tone Alignment', score: 80, comment: 'ok'),
-      CriterionScore(name: 'Clarity', score: 80, comment: 'ok'),
+      CriterionScore(criterion: Criteria.grammar, score: 80, comment: 'ok'),
+      CriterionScore(criterion: Criteria.tone, score: 80, comment: 'ok'),
+      CriterionScore(criterion: Criteria.clarity, score: 80, comment: 'ok'),
     ],
     strengths: ['Clear structure'],
     improvements: ['Shorten the last paragraph'],

@@ -4,7 +4,7 @@
 
 Wriport is a Flutter app where you complete real-world writing challenges (emails, blog posts) and receive AI feedback on your work. The AI acts as a **coach, not a ghostwriter**: it scores your writing and explains how to improve it, but it never rewrites the text for you.
 
-**Current version:** `v0.2` (Increment 2: revision loop)
+**Current version:** `v0.3` (Increment 3: more categories)
 
 ---
 
@@ -30,7 +30,7 @@ Wriport is a Flutter app where you complete real-world writing challenges (email
 Most AI writing tools write *for* you. Wriport does the opposite: you write, and the AI evaluates. Every challenge gives you instructions, a required tone, and a word range. After you submit, you get:
 
 - an overall score (0-100)
-- a score and comment for each criterion (Grammar, Tone Alignment, Clarity)
+- a score and comment for each criterion (Grammar, Tone, Clarity, plus category-specific ones like Structure or Conciseness)
 - a list of strengths
 - a list of concrete improvements
 
@@ -40,7 +40,7 @@ Then you rewrite and try again, and the app shows whether you actually improved.
 
 **Implemented**
 
-- Challenge lists for two categories: Email and Blog Post
+- Challenge lists for eight categories: Email, Blog Post, Prompt, Report, Social Media Post, Essay, Product Description, and Technical Documentation
 - Writing screen with instructions, tone and word-range chips, and a live word counter
 - Real AI evaluation through Google Gemini
 - Feedback screen with an animated overall score, per-criterion scores, strengths and improvements
@@ -50,6 +50,11 @@ Then you rewrite and try again, and the app shows whether you actually improved.
   - previous improvements are shown while you rewrite
   - current vs previous score comparison, with the difference per attempt
   - attempt history with expandable details
+- **More categories (v0.3):**
+  - 8 categories with 3-4 challenges each
+  - each category defines its own icon, description, and evaluation criteria
+  - the Gemini prompt and the fake service build their criteria list from the category, instead of a fixed set
+  - adding a new category means editing only the category definition and the challenge data — no UI or service changes
 - Responsive layout 
 - Loading and error handling, including a safe fallback when the AI call fails
 - Basic protection against prompt injection 
@@ -94,12 +99,13 @@ The app is split into four layers. Each layer only depends on the ones below it.
 | Class | Layer | Responsibility |
 |-------|-------|----------------|
 | `Challenge` | Domain | Describes a writing task (instructions, tone, word range) |
+| `Category` | Domain | Enum: label, description, icon, and the criteria used to evaluate it |
 | `Attempt` | Domain | One submission by the user, including a computed word count |
 | `FeedBack` / `CriterionScore` | Domain | The evaluation result |
 | `EvaluationService` | Domain | Interface: `evaluate(Challenge, Attempt) -> Future<FeedBack>` |
 | `EvaluationException` | Domain | The single error type services throw |
-| `GeminiEvaluationService` | Data | Builds the prompt, calls Gemini, parses the JSON reply |
-| `FakeEvaluationService` | Data | Returns hardcoded feedback for UI work |
+| `GeminiEvaluationService` | Data | Builds the prompt (via `buildPrompt`), calls Gemini, parses the JSON reply |
+| `FakeEvaluationService` | Data | Returns simulated feedback for UI work |
 | `ChallengeRepository` | Data | Provides challenges per category (hardcoded for now) |
 | `AttemptController` / `AttemptState` | State | Holds attempts, feedback, attempt limit and loading/error status |
 | `AppConstants` | Core | App-wide constants (maximum attempts) |
@@ -118,50 +124,25 @@ WritingScreen --submit--> AttemptController --evaluate--> EvaluationService
 
 ```
 lib/
-├── main.dart                         App entry point, loads .env
-├── app.dart                          MaterialApp and theme wiring
-├── router.dart                       Reserved for go_router (planned)
-├── providers.dart                    All Riverpod providers (service swap point)
-├── core/
-│   └── app_constants.dart
-├── domain/
-│   ├── models/
-│   │   ├── challenge.dart
-│   │   ├── attempt.dart
-│   │   ├── criterion_score.dart
-│   │   └── feedback.dart
-│   └── services/
-│       ├── evaluation_service.dart   Interface
-│       └── evaluation_exception.dart
-├── data/
-│   ├── repositories/
-│   │   └── challenge_repository.dart
-│   └── services/
-│       ├── fake_evaluation_service.dart
-│       └── gemini_evaluation_service.dart
-├── state/
-│   ├── attempt_state.dart
-│   └── attempt_controller.dart
-└── ui/
-    ├── screens/
-    │   ├── home_screen.dart
-    │   ├── challenge_screen.dart
-    │   ├── writing_screen.dart
-    │   └── feedback_screen.dart
-    ├── widgets/
-    │   ├── attempts_pill.dart
-    │   ├── info_section_card.dart
-    │   ├── score_card.dart
-    │   └── word_counter.dart
-    └── theme/
-        └── app_theme.dart
+├── main.dart / app.dart / providers.dart   Entry point, MaterialApp, all providers (the service swap point)
+├── core/        App-wide constants
+├── domain/      Models + the EvaluationService interface (pure Dart, no Flutter)
+├── data/        Gemini & fake services, challenge repository
+├── state/       AttemptController + AttemptState
+└── ui/          Screens, widgets, theme
+
 test/
-├── test_helpers.dart                 Shared builders
 ├── attempt_test.dart
 ├── attempt_state_test.dart
 ├── attempt_controller_test.dart
-└── feedback_test.dart
+├── feedback_test.dart
+├── challenge_repository_test.dart        Every category has challenges; data is sane
+└── gemini_evaluation_service_test.dart   The prompt contains each category's criteria
 ```
+
+> Adding a category touches exactly two files: the `Category` enum in
+> `domain/models/challenge.dart` and `ChallengeRepository`. Everything else —
+> home screen, challenge screen, prompts, fake service — derives from the enum.
 
 ## Getting started
 
@@ -202,7 +183,7 @@ test/
 
 ### Running without the real AI
 
-To work on the UI without using API calls, open `lib/providers.dart` and make `evaluationServiceProvider` return `FakeEvaluationService()` instead of `GeminiEvaluationService()`. It waits two seconds and returns fixed feedback.
+To work on the UI without using API calls, open `lib/providers.dart` and make `evaluationServiceProvider` return `FakeEvaluationService()` instead of `GeminiEvaluationService()`. It waits two seconds and returns simulated feedback built from the challenge's own criteria list.
 
 ## Testing
 
@@ -226,14 +207,15 @@ flutter test test/attempt_controller_test.dart
 | `feedback_test.dart` | `FeedBack.fromJson` parses valid JSON; overall score is the rounded-down average; decimal scores are accepted; overall score is clamped to 0-100; missing lists default to empty; missing criteria throws |
 | `attempt_state_test.dart` | Initial state; `canAttempt` against the attempt limit; `latestFeedback` and `previousFeedback`; `copyWith` keeps untouched fields |
 | `attempt_controller_test.dart` | Successful submit stores attempt and feedback; loading status while waiting; attempt numbers increase; a failing service sets the error status and stores nothing; a failed submit does not use up an attempt; submitting past the limit is refused without calling the service; `reset()` clears everything |
+| `challenge_repository_test.dart` | Every category has at least one challenge (the loop fails if a category is added with no data); every category has 3-5 challenges; word ranges are sane; ids are unique |
+| `gemini_evaluation_service_test.dart` | The evaluation prompt contains every criterion of every category, plus the tone, word range, and user text |
 
-
->29 tests passing as of 2026-10-14: 00:03 +29: All tests passed!   
+>36 tests passing as of 2026-10-16: 00:27 +36: All tests passed!
 
 ### Not tested yet
 
 - Widget (UI) tests
-- The real `GeminiEvaluationService` (it needs a network and a key; an integration test is planned)
+- The Gemini network call itself (prompt generation is covered; an integration test is planned)
 
 ## Development approach
 
@@ -249,7 +231,7 @@ flutter test test/attempt_controller_test.dart
 - [x] **Increment 0:** Foundation (project, layers, interface, fake service)
 - [x] **Increment 1:** Core loop (one writing evaluation from start to finish) `v0.1`
 - [x] **Increment 2:** Revision loop (attempt limit, previous attempts, comparing feedback) `v0.2`
-- [ ] **Increment 3:** More categories (a category should be data, not new code)
+- [x] **Increment 3:** More categories (a category is data, not new code) `v0.3`
 - [ ] **Increment 4:** Backend, accounts and persistence (secure AI calls, replace deprecated SDK, go_router, saved history)
 - [ ] **Increment 5:** Progress tracking (averages, improvement over time, common weaknesses)
 

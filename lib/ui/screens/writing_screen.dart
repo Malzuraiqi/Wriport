@@ -61,7 +61,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
         .read(Providers.attemptControllerProvider.notifier)
         .submit(challenge, _textController.text, _wordCount);
 
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     final status = ref.read(Providers.attemptControllerProvider).status;
     final attemptState = ref.read(Providers.attemptControllerProvider);

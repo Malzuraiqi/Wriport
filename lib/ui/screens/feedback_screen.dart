@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wriport/core/app_constants.dart';
-import 'package:wriport/domain/models/criterion_score.dart';
 import 'package:wriport/domain/models/feedback.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/state/attempt_state.dart';
@@ -99,15 +98,14 @@ class FeedbackScreen extends ConsumerWidget {
                     // Criteria List
                     for (int i = 0; i < feedback.criteria.length; i++) ...[
                       ScoreCard(
-                        title: feedback.criteria[i].name,
+                        title: feedback.criteria[i].criterion.label,
                         score: feedback.criteria[i].score,
                         comment: feedback.criteria[i].comment,
                         previousScore: () {
                           if (!hasPrevious) return null;
 
                           final matchingPrevCriterion = prevFeedback.criteria.firstWhere(
-                            (prev) => prev.name.trim().toLowerCase() == feedback.criteria[i].name.trim().toLowerCase(),
-                            orElse: () => CriterionScore(name: '', score: -1, comment: ''), // if not found
+                            (prev) => prev.criterion.label.trim().toLowerCase() == feedback.criteria[i].criterion.label.trim().toLowerCase(),
                           );
 
                           return matchingPrevCriterion.score != -1 ? matchingPrevCriterion.score : null;
@@ -529,7 +527,7 @@ class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
               Expanded(
                 child: ListView.separated(
                   itemCount: feedbacks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final feedback = feedbacks[index];
                     final attemptNumber = widget.attemptState.attempts.length - index;
@@ -680,7 +678,7 @@ class _HistoryCard extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              c.name,
+                              c.criterion.label,
                               overflow: TextOverflow.ellipsis, // Prevents text from breaking layout on very small devices
                               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: scoreColor(scheme, c.score),
