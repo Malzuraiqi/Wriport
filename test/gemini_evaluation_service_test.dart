@@ -37,6 +37,45 @@ void main() {
       }
     });
 
+    test('prompt defines each criterion so Gemini is not judging blind', () {
+      for (final category in Category.values) {
+        final challenge =
+            ChallengeRepository().getChallenges(category).first;
+        final prompt =
+            GeminiEvaluationService.buildPrompt(challenge, _dummyAttempt());
+
+        for (final criterion in category.criteria) {
+          expect(
+            prompt,
+            contains('${criterion.label}: ${criterion.description}'),
+            reason: '${category.label} prompt is missing the definition of '
+                '"${criterion.id}"',
+          );
+        }
+      }
+    });
+
+    test('persona is built from the category, not a fixed proofreader', () {
+      for (final category in Category.values) {
+        final challenge =
+            ChallengeRepository().getChallenges(category).first;
+        final prompt =
+            GeminiEvaluationService.buildPrompt(challenge, _dummyAttempt());
+
+        expect(
+          prompt,
+          contains('specializing in ${category.label.toLowerCase()}'),
+          reason: '${category.label} prompt should use a category-specific '
+              'persona',
+        );
+        expect(
+          prompt,
+          isNot(contains('English Proofreader')),
+          reason: 'The fixed proofreader persona should be gone',
+        );
+      }
+    });
+
     test('prompt carries the challenge constraints and user text', () {
       for (final category in Category.values) {
         for (final challenge

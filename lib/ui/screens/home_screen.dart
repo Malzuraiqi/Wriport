@@ -1,12 +1,8 @@
-// home page is going to contain
-// a greeting to the user based on the time of day,
-// a list of skills (challenges) to choose from the challenges model enum categories,
-// and a theme mode toggle in the app bar.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
+import 'package:wriport/ui/category_icons.dart';
 import 'challenge_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -86,15 +82,21 @@ class HomeScreen extends ConsumerWidget {
                             ),
                       ),
                       const SizedBox(height: 28),
+                      // Wide screens: a grid with a max card width, so any
+                      // number of categories lays out cleanly (a single Row
+                      // squeezed 8 cards into ~100px each).
                       if (isWide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (var i = 0; i < cards.length; i++) ...[
-                              if (i > 0) const SizedBox(width: 16),
-                              Expanded(child: cards[i]),
-                            ],
-                          ],
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 300,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 0.9,
+                          ),
+                          itemCount: cards.length,
+                          itemBuilder: (context, index) => cards[index],
                         )
                       else
                         Column(

@@ -4,7 +4,6 @@ import 'package:wriport/domain/services/evaluation_exception.dart';
 import 'criterion_score.dart';
 
 class FeedBack {
-  // attemptId, overallScore, criteria (List<CriterionScore>), strengths (List<String>), improvements (List<String>), fromJson (to build feedback from AI Json) 
   FeedBack({
     required this.attemptId,
     required this.overallScore,
@@ -26,7 +25,7 @@ class FeedBack {
     
     final returnedCriteriaMap = <String, Map<String, dynamic>>{};
     for (final item in rawCriteriaList) {
-      final id = (item['id'] ?? item['criterion'] as String?);
+      final id = item['id'] as String?;
       if (id != null) {
         returnedCriteriaMap[id] = item as Map<String, dynamic>;
       }

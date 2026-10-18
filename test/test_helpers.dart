@@ -27,7 +27,7 @@ Attempt buildAttempt({
   int attemptNumber = 1,
   String text = 'Dear Professor Luan',
 }) {
-  int wordCount = text.trim().split(RegExp(r'\s+')).where((word) => word.isNotEmpty).length;
+  int wordCount = countWords(text);
   return Attempt(
     id: id,
     challengeId: 1,

@@ -24,10 +24,16 @@ class FeedbackScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.inbox_outlined, size: 48, color: scheme.onSurfaceVariant),
+              Icon(
+                Icons.inbox_outlined,
+                size: 48,
+                color: scheme.onSurfaceVariant,
+              ),
               const SizedBox(height: 12),
-              Text('No feedback yet',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'No feedback yet',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () => Navigator.pop(context),
@@ -41,12 +47,9 @@ class FeedbackScreen extends ConsumerWidget {
 
     final feedback = attemptState.latestFeedback;
     final prevFeedback = attemptState.previousFeedback;
-    
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Feedback'),
-      ),
+      appBar: AppBar(title: const Text('Feedback')),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -66,7 +69,10 @@ class FeedbackScreen extends ConsumerWidget {
               color: Theme.of(context).colorScheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
-                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant
+                      .withValues(alpha: 0.5),
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -81,15 +87,17 @@ class FeedbackScreen extends ConsumerWidget {
                       children: [
                         Text(
                           hasPrevious ? 'Rubric comparison' : 'Rubric criteria',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         if (hasPrevious)
                           Text(
                             'Current vs previous attempt',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                           ),
                       ],
@@ -101,17 +109,21 @@ class FeedbackScreen extends ConsumerWidget {
                         title: feedback.criteria[i].criterion.label,
                         score: feedback.criteria[i].score,
                         comment: feedback.criteria[i].comment,
+                        // Match criteria by id (stable), and simply skip the
+                        // comparison when the previous attempt lacks one.
                         previousScore: () {
                           if (!hasPrevious) return null;
 
-                          final matchingPrevCriterion = prevFeedback.criteria.firstWhere(
-                            (prev) => prev.criterion.label.trim().toLowerCase() == feedback.criteria[i].criterion.label.trim().toLowerCase(),
-                          );
-
-                          return matchingPrevCriterion.score != -1 ? matchingPrevCriterion.score : null;
+                          for (final prev in prevFeedback.criteria) {
+                            if (prev.criterion.id ==
+                                feedback.criteria[i].criterion.id) {
+                              return prev.score;
+                            }
+                          }
+                          return null;
                         }(),
                       ),
-                      if (i < feedback.criteria.length - 1) 
+                      if (i < feedback.criteria.length - 1)
                         const SizedBox(height: 24), // Spacing between criteria
                     ],
                   ],
@@ -148,9 +160,12 @@ class FeedbackScreen extends ConsumerWidget {
             );
 
             final restartButton = FilledButton.icon(
-              onPressed: () => Navigator.popUntil(context, ModalRoute.withName('/challenges')), 
+              onPressed: () => Navigator.popUntil(
+                context,
+                ModalRoute.withName('/challenges'),
+              ),
               icon: const Icon(Icons.arrow_back_rounded),
-              label: const Text("Back to challenges")
+              label: const Text("Back to challenges"),
             );
 
             return SingleChildScrollView(
@@ -164,7 +179,9 @@ class FeedbackScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AttemptsPill(displayAttemptNumber: attemptState.attempts.length),
+                      AttemptsPill(
+                        displayAttemptNumber: attemptState.attempts.length,
+                      ),
                       const SizedBox(height: 24),
                       scoreHeader,
                       const SizedBox(height: 24),
@@ -187,37 +204,41 @@ class FeedbackScreen extends ConsumerWidget {
                         alignment: isWide
                             ? Alignment.centerRight
                             : Alignment.center,
-                        child: Column(children: [
-                          if (attemptState.canAttempt) tryagainButton,
-                          const SizedBox(height: 12,),
-                          restartButton,
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => _AttemptHistoryDialog(
-                                  attemptState: attemptState,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.history, size: 18),
-                            label: const Text('View history'),
-                          ),
-                          SizedBox(height: 10,),
-                          Text(
-                            attemptState.attempts.length >= AppConstants.maxAttempts 
-                            ? 'max attempts reached' 
-                            : '',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.error,
+                        child: Column(
+                          children: [
+                            if (attemptState.canAttempt) tryagainButton,
+                            const SizedBox(height: 12),
+                            restartButton,
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => _AttemptHistoryDialog(
+                                    attemptState: attemptState,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.history, size: 18),
+                              label: const Text('View history'),
                             ),
-                            textAlign: TextAlign.center,
+                            SizedBox(height: 10),
+                            Text(
+                              attemptState.attempts.length >=
+                                      AppConstants.maxAttempts
+                                  ? 'max attempts reached'
+                                  : '',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                              textAlign: TextAlign.center,
                             ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ]),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -261,7 +282,8 @@ class _ScoreHeader extends StatelessWidget {
                   score: score,
                   isCurrent: true,
                   color: scheme.onPrimary,
-                  previousScore: previousScore, // Passed here to calculate the difference
+                  previousScore:
+                      previousScore, // Passed here to calculate the difference
                 ),
                 // Previous Attempt (if provided)
                 if (previousScore != null)
@@ -280,13 +302,13 @@ class _ScoreHeader extends StatelessWidget {
               score >= 80
                   ? 'Clear, accountable, and easy to act on.'
                   : score >= 60
-                      ? 'Solid effort — a few things to polish.'
-                      : 'Keep practicing — review the notes below.',
+                  ? 'Solid effort — a few things to polish.'
+                  : 'Keep practicing — review the notes below.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onPrimary.withValues(alpha: 0.9),
-                    height: 1.5,
-                  ),
+                color: scheme.onPrimary.withValues(alpha: 0.9),
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -313,18 +335,16 @@ class _ScoreDial extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Calculate the difference only if this is the current dial and previousScore exists
-    final int? diff = (isCurrent && previousScore != null) 
-        ? score - previousScore! 
+    final int? diff = (isCurrent && previousScore != null)
+        ? score - previousScore!
         : null;
 
     return Column(
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(context).textTheme.titleSmall
+              ?.copyWith(color: color, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -348,14 +368,13 @@ class _ScoreDial extends StatelessWidget {
                   children: [
                     Text(
                       isCurrent ? 'Current' : 'Previous',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(color: color, fontWeight: FontWeight.w600),
                     ),
                     Text(
                       score.toString(),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             color: color,
                             fontWeight: FontWeight.bold,
                             height: 1.1,
@@ -367,14 +386,21 @@ class _ScoreDial extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            diff > 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                            diff > 0
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
                             size: 14,
-                            color: diff > 0 ? Colors.greenAccent : Colors.redAccent,
+                            color: diff > 0
+                                ? Colors.greenAccent
+                                : Colors.redAccent,
                           ),
                           Text(
                             '${diff.abs()}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: diff > 0 ? Colors.greenAccent : Colors.redAccent,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: diff > 0
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -425,10 +451,8 @@ class _FeedbackListCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: foreground,
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(context).textTheme.titleSmall
+                    ?.copyWith(color: foreground, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -447,9 +471,8 @@ class _FeedbackListCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       item,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: foreground,
-                          ),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: foreground),
                     ),
                   ),
                 ],
@@ -472,12 +495,13 @@ class _AttemptHistoryDialog extends StatefulWidget {
 
 class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
   // Tracks which attempt index is currently expanded. Null means all closed.
-  int? _expandedIndex; 
+  int? _expandedIndex;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final feedbacks = widget.attemptState.feedbacks.reversed.toList(); // Newest first
+    final feedbacks = widget.attemptState.feedbacks.reversed
+        .toList(); // Newest first
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -499,16 +523,14 @@ class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
                     children: [
                       Text(
                         'Attempt history',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${widget.attemptState.attempts.length} of ${AppConstants.maxAttempts} attempts completed',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -522,7 +544,7 @@ class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
                 ],
               ),
               const SizedBox(height: 24),
-              
+
               // Scrollable List of Attempts
               Expanded(
                 child: ListView.separated(
@@ -530,7 +552,8 @@ class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
                   separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final feedback = feedbacks[index];
-                    final attemptNumber = widget.attemptState.attempts.length - index;
+                    final attemptNumber =
+                        widget.attemptState.attempts.length - index;
                     final isExpanded = _expandedIndex == index;
 
                     return _HistoryCard(
@@ -548,14 +571,13 @@ class _AttemptHistoryDialogState extends State<_AttemptHistoryDialog> {
                   },
                 ),
               ),
-              
+
               const SizedBox(height: 16),
               Center(
                 child: Text(
                   'Select an attempt to view detailed feedback.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -596,7 +618,9 @@ class _HistoryCard extends StatelessWidget {
           color: scheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isExpanded ? scheme.primary : scheme.outlineVariant.withValues(alpha: 0.5),
+            color: isExpanded
+                ? scheme.primary
+                : scheme.outlineVariant.withValues(alpha: 0.5),
             width: isExpanded ? 2 : 1,
           ),
         ),
@@ -621,10 +645,8 @@ class _HistoryCard extends StatelessWidget {
                     ),
                     Text(
                       feedback.overallScore.toString(),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(color: color, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -635,42 +657,51 @@ class _HistoryCard extends StatelessWidget {
                     children: [
                       Text(
                         'Attempt $attemptNumber',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         isLatest ? 'Current attempt' : 'Previous attempt',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isLatest ? scheme.primary : scheme.onSurfaceVariant,
-                            ),
+                          color: isLatest
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Icon(
-                  isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  isExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                   color: scheme.onSurfaceVariant,
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Criteria Grid (Always visible)
             LayoutBuilder(
               builder: (context, constraints) {
                 // Calculate exactly half the available width, minus the 8px spacing gap
                 final itemWidth = (constraints.maxWidth - 8) / 2;
-                
+
                 return Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: feedback.criteria.map<Widget>((c) {
                     return Container(
                       width: itemWidth, // Use the dynamically calculated width
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: scoreColor(scheme, c.score).withValues(alpha: 0.1),
+                        color: scoreColor(
+                          scheme,
+                          c.score,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -680,14 +711,16 @@ class _HistoryCard extends StatelessWidget {
                             child: Text(
                               c.criterion.label,
                               overflow: TextOverflow.ellipsis, // Prevents text from breaking layout on very small devices
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
                                     color: scoreColor(scheme, c.score),
                                   ),
                             ),
                           ),
                           Text(
                             '${c.score}/100',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: scoreColor(scheme, c.score),
                                 ),
@@ -705,7 +738,7 @@ class _HistoryCard extends StatelessWidget {
               const SizedBox(height: 24),
               const Divider(),
               const SizedBox(height: 16),
-              
+
               // Strengths
               if (feedback.strengths.isNotEmpty)
                 _FeedbackListCard(
@@ -716,9 +749,9 @@ class _HistoryCard extends StatelessWidget {
                   background: scheme.primaryContainer.withValues(alpha: 0.3),
                   foreground: scheme.primary,
                 ),
-                
+
               const SizedBox(height: 12),
-              
+
               // Improvements
               if (feedback.improvements.isNotEmpty)
                 _FeedbackListCard(
