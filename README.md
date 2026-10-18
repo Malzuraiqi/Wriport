@@ -4,7 +4,7 @@
 
 Wriport is a Flutter app where you complete real-world writing challenges (emails, blog posts) and receive AI feedback on your work. The AI acts as a **coach, not a ghostwriter**: it scores your writing and explains how to improve it, but it never rewrites the text for you.
 
-**Current version:** `v0.3` (Increment 3: more categories)
+**Current version:** `v0.3.1` (fixes patch on top of Increment 3: testability, pure domain layer, friendlier errors)
 
 ---
 
@@ -99,7 +99,7 @@ The app is split into four layers. Each layer only depends on the ones below it.
 | Class | Layer | Responsibility |
 |-------|-------|----------------|
 | `Challenge` | Domain | Describes a writing task (instructions, tone, word range) |
-| `Category` | Domain | Enum: label, description, icon, and the criteria used to evaluate it |
+| `Category` | Domain | Enum: label, description, and the criteria used to evaluate it. Icons are a UI concern — mapped in `ui/category_icons.dart` |
 | `Attempt` | Domain | One submission by the user, including a computed word count |
 | `FeedBack` / `CriterionScore` | Domain | The evaluation result |
 | `EvaluationService` | Domain | Interface: `evaluate(Challenge, Attempt) -> Future<FeedBack>` |
@@ -129,7 +129,7 @@ lib/
 ├── domain/      Models + the EvaluationService interface (pure Dart, no Flutter)
 ├── data/        Gemini & fake services, challenge repository
 ├── state/       AttemptController + AttemptState
-└── ui/          Screens, widgets, theme
+└── ui/          Screens, widgets, theme, category_icons.dart (Category -> IconData)
 
 test/
 ├── attempt_test.dart
@@ -203,14 +203,14 @@ flutter test test/attempt_controller_test.dart
 
 | Test file | What it verifies |
 |-----------|------------------|
-| `attempt_test.dart` | `Attempt.wordCount` for normal text, extra spaces, newlines and tabs, empty and whitespace-only text, punctuation |
+| `attempt_test.dart` | The shared `countWords()` (used by both the controller and the live counter) for normal text, extra spaces, newlines and tabs, empty and whitespace-only text, punctuation |
 | `feedback_test.dart` | `FeedBack.fromJson` parses valid JSON; overall score is the rounded-down average; decimal scores are accepted; overall score is clamped to 0-100; missing lists default to empty; missing criteria throws |
 | `attempt_state_test.dart` | Initial state; `canAttempt` against the attempt limit; `latestFeedback` and `previousFeedback`; `copyWith` keeps untouched fields |
 | `attempt_controller_test.dart` | Successful submit stores attempt and feedback; loading status while waiting; attempt numbers increase; a failing service sets the error status and stores nothing; a failed submit does not use up an attempt; submitting past the limit is refused without calling the service; `reset()` clears everything |
-| `challenge_repository_test.dart` | Every category has at least one challenge (the loop fails if a category is added with no data); every category has 3-5 challenges; word ranges are sane; ids are unique |
-| `gemini_evaluation_service_test.dart` | The evaluation prompt contains every criterion of every category, plus the tone, word range, and user text |
+| `challenge_repository_test.dart` | Every category has at least one challenge (the loop fails if a category is added with no data); every category has at least 3 challenges; word ranges are sane; ids are unique |
+| `gemini_evaluation_service_test.dart` | The evaluation prompt contains every criterion of every category — id, definition, and a category-specific persona — plus the tone, word range, and user text |
 
->36 tests passing as of 2026-10-16: 00:27 +36: All tests passed!
+>Run `flutter test` for the current count.
 
 ### Not tested yet
 
