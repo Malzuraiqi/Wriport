@@ -47,6 +47,9 @@ class AttemptController extends Notifier<AttemptState> {
         feedbacks: [...state.feedbacks, feedback],
         status: AttemptStatus.idle,
       );
+
+      // Auto-save to Firestore after a successful evaluation
+      await _saveToHistory(challenge, attempt, feedback);
     } on EvaluationException catch (e) {
       // e.message is user-friendly; the technical detail was already logged
       // by the service that threw it.
@@ -62,6 +65,61 @@ class AttemptController extends Notifier<AttemptState> {
         errorMessage: 'Something went wrong. Please try again later.',
       );
     }
+  }
+
+  /// Persists the attempt to Firestore. Creates the session on the first
+  /// attempt, then saves each subsequent attempt under it.
+  /// If saving fails, sets [SaveStatus.failed] so the UI can offer retry.
+  Future<void> _saveToHistory(
+    Challenge challenge,
+    Attempt attempt,
+    feedback,
+  ) async {
+    state = state.copyWith(saveStatus: SaveStatus.saving);
+
+    try {
+      final historyRepo = ref.read(Providers.historyRepositoryProvider);
+
+      // Create session on first attempt
+      var sessionId = state.sessionId;
+      if (sessionId == null) {
+        sessionId = await historyRepo.createSession(
+          challengeId: challenge.id,
+          categoryName: challenge.category.name,
+          challengeTitle: challenge.title,
+        );
+        state = state.copyWith(sessionId: sessionId);
+      }
+
+      // Save the attempt
+      await historyRepo.saveAttempt(
+        sessionId: sessionId,
+        attempt: attempt,
+        feedback: feedback,
+      );
+
+      // Update best score
+      await historyRepo.updateBestScoreIfHigher(
+        sessionId,
+        feedback.overallScore,
+      );
+
+      state = state.copyWith(saveStatus: SaveStatus.idle);
+    } catch (e) {
+      debugPrint('Failed to save attempt to history: $e');
+      state = state.copyWith(saveStatus: SaveStatus.failed);
+    }
+  }
+
+  /// Retries saving the latest attempt after a prior failure.
+  /// Called from the UI when the user taps the retry action.
+  Future<void> retrySave(Challenge challenge) async {
+    if (state.saveStatus != SaveStatus.failed) return;
+    if (state.attempts.isEmpty || state.feedbacks.isEmpty) return;
+
+    final attempt = state.attempts.last;
+    final feedback = state.feedbacks.last;
+    await _saveToHistory(challenge, attempt, feedback);
   }
 
   // Method to reset the controller state

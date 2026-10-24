@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only access their own document tree.
+    match /users/{uid} {
+      // The user doc itself is not used yet, but allow read/write for the
+      // owner so profile data can be added later.
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // Sessions: only the owning user may CRUD.
+      match /sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+
+        // Attempts live under a session. Same owner-only rule.
+        match /attempts/{attemptId} {
+          allow read, write: if request.auth != null && request.auth.uid == uid;
+        }
+      }
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
