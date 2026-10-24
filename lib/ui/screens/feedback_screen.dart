@@ -233,7 +233,7 @@ class FeedbackScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (saveBanner != null) saveBanner,
+                      ?saveBanner,
                       AttemptsPill(
                         displayAttemptNumber: attemptState.attempts.length,
                       ),

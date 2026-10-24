@@ -11,8 +11,17 @@ import 'package:wriport/domain/repositories/history_repository.dart';
 import 'package:wriport/domain/services/evaluation_exception.dart';
 
 class FirestoreHistoryRepository implements HistoryRepository {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  FirestoreHistoryRepository({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+  })  : _customDb = firestore,
+        _customAuth = auth;
+
+  final FirebaseFirestore? _customDb;
+  final FirebaseAuth? _customAuth;
+
+  FirebaseFirestore get _db => _customDb ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth => _customAuth ?? FirebaseAuth.instance;
 
   String get _uid {
     final uid = _auth.currentUser?.uid;

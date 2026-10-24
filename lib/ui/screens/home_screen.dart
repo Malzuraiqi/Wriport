@@ -33,14 +33,19 @@ class HomeScreen extends ConsumerWidget {
     }).toList();
 
     return Scaffold(
-      appBar:   AppBar(
+      appBar: AppBar(
         title: const Text('Wriport'),
         actions: [
+          IconButton(
+            tooltip: 'History',
+            onPressed: () => context.push(AppRouter.history),
+            icon: const Icon(Icons.history_outlined),
+          ),
           IconButton(
             tooltip: themeMode == ThemeMode.dark ? 'Switch to light mode' : 'Switch to dark mode',
             onPressed: () {
               ref.read(Providers.themeModeProvider.notifier).changeTheme(
-                themeMode== ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+                themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
               );
             },
             icon: AnimatedSwitcher(
@@ -50,6 +55,13 @@ class HomeScreen extends ConsumerWidget {
                 key: ValueKey<ThemeMode>(themeMode),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(Providers.authRepositoryProvider).signOut();
+            },
+            icon: const Icon(Icons.logout_outlined),
           ),
           const SizedBox(width: 4),
         ],
