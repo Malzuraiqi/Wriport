@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wriport/domain/models/attempt.dart';
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
-import 'package:wriport/router.dart';
 import 'package:wriport/state/attempt_state.dart';
 import 'package:wriport/ui/widgets/attempts_pill.dart';
 import 'package:wriport/ui/widgets/info_section_card.dart';
 import 'package:wriport/ui/widgets/word_counter.dart';
+import 'feedback_screen.dart';
 
 class WritingScreen extends ConsumerStatefulWidget {
-  const WritingScreen({super.key, required this.challengeId});
+  const WritingScreen({super.key, required this.challenge});
 
-  final int challengeId;
+  final Challenge challenge;
 
   @override
   ConsumerState<WritingScreen> createState() => _WritingScreenState();
@@ -28,13 +27,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     super.initState();
     _textController = TextEditingController();
     _textController.addListener(_updateWordCount);
-
-    // Reset the attempt state when entering the screen via ANY route
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(Providers.attemptControllerProvider.notifier).reset();
-      }
-    });
   }
 
   void _updateWordCount() {
@@ -58,7 +50,10 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     final status = ref.read(Providers.attemptControllerProvider).status;
     final attemptState = ref.read(Providers.attemptControllerProvider);
     if (status == AttemptStatus.idle) {
-      context.push(AppRouter.feedback);
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const FeedbackScreen()),
+      );
     } else if (status == AttemptStatus.error) {
       final scheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context)
@@ -80,15 +75,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final challenge = ref.watch(Providers.challengeProvider(widget.challengeId));
-
-    if (challenge == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Challenge not found')),
-        body: const Center(child: Text('This challenge does not exist'),)
-      );
-    }
-
+    final challenge = widget.challenge;
     final scheme = Theme.of(context).colorScheme;
     final attemptState = ref.watch(Providers.attemptControllerProvider);
     final isLoading = attemptState.status == AttemptStatus.loading;
@@ -97,24 +84,16 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (didPop) return;
+        if (didPop) return; // if already popped
 
         if (_textController.text.trim().isEmpty) {
-          if(context.canPop()) {
-            context.pop();
-          } else {
-            context.go(AppRouter.home);
-          }
+          Navigator.of(context).pop();
           return;
         }
 
         final bool shouldLeave = await _showExitConfirmation(context) ?? false;
         if (shouldLeave && context.mounted) {
-          if(context.canPop()) {
-            context.pop();
-          } else {
-            context.go(AppRouter.home);
-          }
+          Navigator.of(context).pop();
         }
       },
       child: Scaffold(

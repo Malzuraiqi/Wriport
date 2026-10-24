@@ -75,7 +75,7 @@ Then you rewrite and try again, and the app shows whether you actually improved.
 | State management | Riverpod (`flutter_riverpod`) | Testable, no dependency on widgets, easy to swap services |
 | AI | Google Gemini (`gemini-3.1-flash-lite`) via `google_generative_ai` | Fast, low cost, supports JSON output |
 | Config | `flutter_dotenv` | Keeps the API key out of source code |
-| Navigation | go_router | Declarative routes, ids in the URL, redirect guards |
+| Navigation | `Navigator` (go_router is installed and planned) | Enough for the current number of screens |
 
 > **Note:** the `google_generative_ai` package is deprecated by Google. It still works for development. See [Known limitations](#known-limitations).
 
@@ -124,7 +124,7 @@ WritingScreen --submit--> AttemptController --evaluate--> EvaluationService
 
 ```
 lib/
-├── main.dart / app.dart / providers.dart / router.dart   Entry point, MaterialApp, all providers (the service swap point), Route table + URL guards
+├── main.dart / app.dart / providers.dart   Entry point, MaterialApp, all providers (the service swap point)
 ├── core/        App-wide constants
 ├── domain/      Models + the EvaluationService interface (pure Dart, no Flutter)
 ├── data/        Gemini & fake services, challenge repository

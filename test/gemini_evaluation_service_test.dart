@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wriport/data/repositories/challenge_repository.dart';
+import 'package:wriport/data/services/gemini_evaluation_service.dart';
 import 'package:wriport/domain/models/attempt.dart';
 import 'package:wriport/domain/models/challenge.dart';
-import 'package:wriport/domain/services/evaluation_prompt.dart';
 
 Attempt _dummyAttempt() => Attempt(
       id: 1,
@@ -24,7 +24,7 @@ void main() {
         final challenge =
             ChallengeRepository().getChallenges(category).first;
         final prompt =
-            buildPrompt(challenge, _dummyAttempt());
+            GeminiEvaluationService.buildPrompt(challenge, _dummyAttempt());
 
         for (final criterion in category.criteria) {
           expect(
@@ -42,7 +42,7 @@ void main() {
         final challenge =
             ChallengeRepository().getChallenges(category).first;
         final prompt =
-            buildPrompt(challenge, _dummyAttempt());
+            GeminiEvaluationService.buildPrompt(challenge, _dummyAttempt());
 
         for (final criterion in category.criteria) {
           expect(
@@ -60,7 +60,7 @@ void main() {
         final challenge =
             ChallengeRepository().getChallenges(category).first;
         final prompt =
-            buildPrompt(challenge, _dummyAttempt());
+            GeminiEvaluationService.buildPrompt(challenge, _dummyAttempt());
 
         expect(
           prompt,
@@ -81,7 +81,7 @@ void main() {
         for (final challenge
             in ChallengeRepository().getChallenges(category)) {
           final attempt = _dummyAttempt();
-          final prompt = buildPrompt(challenge, attempt);
+          final prompt = GeminiEvaluationService.buildPrompt(challenge, attempt);
 
           expect(prompt, contains(challenge.tone),
               reason: '${challenge.title}: tone missing from prompt');

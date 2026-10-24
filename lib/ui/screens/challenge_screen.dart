@@ -5,10 +5,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:wriport/providers.dart';
-import 'package:wriport/router.dart';
-import 'package:wriport/domain/models/challenge.dart';
+import 'package:wriport/ui/screens/writing_screen.dart';
+import '../../domain/models/challenge.dart';
 
 class ChallengeScreen extends ConsumerWidget {
   final Category category;
@@ -123,8 +122,12 @@ class _ChallengeCard extends ConsumerWidget {
               child: FilledButton.icon(
                 onPressed: () {
                   ref.read(Providers.attemptControllerProvider.notifier).reset();
-                  // Pass only the id; the writing route looks it up.
-                  context.go(AppRouter.writing(challenge.id));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WritingScreen(challenge: challenge),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Start Challenge'),

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:wriport/router.dart';
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/ui/category_icons.dart';
+import 'challenge_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -22,13 +21,16 @@ class HomeScreen extends ConsumerWidget {
     final themeMode = ref.watch(Providers.themeModeProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
-    final user = ref.watch(Providers.currentUserProvider);
-    final displayName = user?.displayName ?? user?.email.split('@').first ?? 'Writer';
-
     final cards = Category.values.map((category) {
       return _CategoryCard(
         category: category,
-        onTap: () => context.go(AppRouter.challengeList(category)),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: '/challenges'),
+            builder: (context) => ChallengeScreen(category: category),
+          ),
+        ),
       );
     }).toList();
 
@@ -67,7 +69,7 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       const SizedBox(height: 12),
                       Text(
-                        '$_greeting, $displayName!',
+                        '$_greeting, Mohammed!',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
