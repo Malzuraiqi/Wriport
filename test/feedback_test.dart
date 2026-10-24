@@ -57,7 +57,7 @@ void main() {
     test('overall score is 0 when there are no criteria', () {
       expect(FeedBack.fromJson(_json([]), attemptId: 3, requiredCriterias: []).overallScore, 0);
     });
-
+  
     test('missing strengths and improvements become empty lists', () {
       final json = _json([80, 80, 80])
         ..remove('strengths')

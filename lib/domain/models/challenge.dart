@@ -1,7 +1,7 @@
 import 'package:wriport/domain/models/criterion.dart';
 
 class Challenge {
-  Challenge({
+  const Challenge({
     required this.id,
     required this.category,
     required this.title,
