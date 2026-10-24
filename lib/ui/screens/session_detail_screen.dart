@@ -4,22 +4,24 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:wriport/domain/models/session.dart';
 import 'package:wriport/domain/models/session_attempt.dart';
 import 'package:wriport/providers.dart';
+import 'package:wriport/router.dart';
 import 'package:wriport/ui/widgets/feedback_list_card.dart';
 import 'package:wriport/ui/widgets/score_card.dart';
 
-/// FutureProvider family that loads session attempts from Firestore.
+/// AutoDispose FutureProvider family that loads session attempts from Firestore.
 final _sessionAttemptsProvider =
-    FutureProvider.family<List<SessionAttempt>, String>((ref, sessionId) {
-  return ref.read(Providers.historyRepositoryProvider).getAttempts(sessionId);
+    FutureProvider.autoDispose.family<List<SessionAttempt>, String>((ref, sessionId) {
+  return ref.watch(Providers.historyRepositoryProvider).getAttempts(sessionId);
 });
 
-/// FutureProvider family that loads a single session from Firestore.
+/// AutoDispose FutureProvider family that loads a single session from Firestore.
 final _sessionProvider =
-    FutureProvider.family<Session?, String>((ref, sessionId) {
-  return ref.read(Providers.historyRepositoryProvider).getSession(sessionId);
+    FutureProvider.autoDispose.family<Session?, String>((ref, sessionId) {
+  return ref.watch(Providers.historyRepositoryProvider).getSession(sessionId);
 });
 
 class SessionDetailScreen extends ConsumerStatefulWidget {
@@ -45,7 +47,24 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
     final title = session?.challengeTitle ?? 'Session';
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: 'Home',
+            onPressed: () => context.go(AppRouter.home),
+            icon: const Icon(Icons.home_outlined),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(Providers.authRepositoryProvider).signOut();
+            },
+            icon: const Icon(Icons.logout_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: attemptsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

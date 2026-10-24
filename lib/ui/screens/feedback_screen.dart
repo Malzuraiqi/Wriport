@@ -24,7 +24,29 @@ class FeedbackScreen extends ConsumerWidget {
     final prevFeedback = attemptState.previousFeedback;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback')),
+      appBar: AppBar(
+        title: const Text('Feedback'),
+        actions: [
+          IconButton(
+            tooltip: 'Session history',
+            onPressed: () => context.go(AppRouter.history),
+            icon: const Icon(Icons.history_outlined),
+          ),
+          IconButton(
+            tooltip: 'Home',
+            onPressed: () => context.go(AppRouter.home),
+            icon: const Icon(Icons.home_outlined),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(Providers.authRepositoryProvider).signOut();
+            },
+            icon: const Icon(Icons.logout_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -124,17 +146,21 @@ class FeedbackScreen extends ConsumerWidget {
             );
 
             final tryagainButton = FilledButton.icon(
-              // Pops back to the writing screen, which is still alive
-              // underneath and keeps the typed text.
-              onPressed: () => context.pop(),
+              onPressed: () {
+                final challengeId = attemptState.attempts.lastOrNull?.challengeId;
+                if (challengeId != null) {
+                  context.go(AppRouter.writing(challengeId));
+                } else if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go(AppRouter.home);
+                }
+              },
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Try again'),
             );
 
             final restartButton = FilledButton.icon(
-              // Same result the old popUntil('/challenges') name-trick gave,
-              // but explicit: go to this challenge's category list,
-              // replacing the stack.
               onPressed: () {
                 final challenge = ref.read(
                   Providers.challengeProvider(
@@ -266,11 +292,11 @@ class FeedbackScreen extends ConsumerWidget {
                             restartButton,
                             const SizedBox(height: 12),
                             TextButton.icon(
-                              onPressed: () => context.push(AppRouter.history),
+                              onPressed: () => context.go(AppRouter.history),
                               icon: const Icon(Icons.history, size: 18),
                               label: const Text('View history'),
                             ),
-                            SizedBox(height: 10),
+                            const SizedBox(height: 10),
                             Text(
                               attemptState.attempts.length >=
                                       AppConstants.maxAttempts

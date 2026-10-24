@@ -26,15 +26,25 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   @override
   void initState() {
     super.initState();
-    _textController = TextEditingController();
-    _textController.addListener(_updateWordCount);
+    final attemptState = ref.read(Providers.attemptControllerProvider);
+    final lastAttempt = attemptState.attempts.lastOrNull;
+    final isSameChallenge =
+        lastAttempt != null && lastAttempt.challengeId == widget.challengeId;
 
-    // Reset the attempt state when entering the screen via ANY route
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(Providers.attemptControllerProvider.notifier).reset();
-      }
-    });
+    // Only reset if previously working on a different challenge
+    if (attemptState.attempts.isNotEmpty && !isSameChallenge) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(Providers.attemptControllerProvider.notifier).reset();
+        }
+      });
+    }
+
+    // Preserve previous attempt text if refining the same challenge
+    final initialText = isSameChallenge ? lastAttempt.text : '';
+    _textController = TextEditingController(text: initialText);
+    _wordCount = countWords(initialText);
+    _textController.addListener(_updateWordCount);
   }
 
   void _updateWordCount() {
@@ -58,7 +68,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     final status = ref.read(Providers.attemptControllerProvider).status;
     final attemptState = ref.read(Providers.attemptControllerProvider);
     if (status == AttemptStatus.idle) {
-      context.push(AppRouter.feedback);
+      context.go(AppRouter.feedback);
     } else if (status == AttemptStatus.error) {
       final scheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context)
@@ -85,7 +95,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     if (challenge == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Challenge not found')),
-        body: const Center(child: Text('This challenge does not exist'),)
+        body: const Center(child: Text('This challenge does not exist')),
       );
     }
 
@@ -100,7 +110,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
         if (didPop) return;
 
         if (_textController.text.trim().isEmpty) {
-          if(context.canPop()) {
+          if (context.canPop()) {
             context.pop();
           } else {
             context.go(AppRouter.home);
@@ -110,7 +120,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
 
         final bool shouldLeave = await _showExitConfirmation(context) ?? false;
         if (shouldLeave && context.mounted) {
-          if(context.canPop()) {
+          if (context.canPop()) {
             context.pop();
           } else {
             context.go(AppRouter.home);
@@ -120,6 +130,37 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(challenge.title),
+          actions: [
+            IconButton(
+              tooltip: 'Home',
+              onPressed: () async {
+                if (_textController.text.trim().isNotEmpty) {
+                  final leave = await _showExitConfirmation(context) ?? false;
+                  if (leave && context.mounted) {
+                    context.go(AppRouter.home);
+                  }
+                } else {
+                  context.go(AppRouter.home);
+                }
+              },
+              icon: const Icon(Icons.home_outlined),
+            ),
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: () async {
+                if (_textController.text.trim().isNotEmpty) {
+                  final leave = await _showExitConfirmation(context) ?? false;
+                  if (leave && context.mounted) {
+                    await ref.read(Providers.authRepositoryProvider).signOut();
+                  }
+                } else {
+                  await ref.read(Providers.authRepositoryProvider).signOut();
+                }
+              },
+              icon: const Icon(Icons.logout_outlined),
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
         body: SafeArea(
           child: LayoutBuilder(
@@ -135,8 +176,8 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        AttemptsPill(displayAttemptNumber: attemptState.attempts.length + 1,),
-                        const SizedBox(height: 24,),
+                        AttemptsPill(displayAttemptNumber: attemptState.attempts.length + 1),
+                        const SizedBox(height: 24),
                         // Instructions panel
                         InfoSectionCard(
                           title: 'Instructions', 
@@ -235,7 +276,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         backgroundColor: scheme.surface,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24), 
-        // NEW: ConstrainedBox limits how wide the pop-up can get
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
           child: Padding(
@@ -244,7 +284,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
               mainAxisSize: MainAxisSize.min, 
               crossAxisAlignment: CrossAxisAlignment.start, 
               children: [
-                // Light red circular warning icon
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -272,7 +311,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
                 ),
                 const SizedBox(height: 32),
                 
-                // Top Button: Stay (Solid filled)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -289,7 +327,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
                 ),
                 const SizedBox(height: 12),
                 
-                // Bottom Button: Leave (Light background with icon)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(

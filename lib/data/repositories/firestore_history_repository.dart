@@ -92,8 +92,16 @@ class FirestoreHistoryRepository implements HistoryRepository {
 
   @override
   Future<List<Session>> getSessions() async {
-    final snapshot = await _sessions.orderBy('startedAt', descending: true).get();
-    return snapshot.docs.map(_sessionFromDoc).toList();
+    try {
+      final snapshot = await _sessions.orderBy('startedAt', descending: true).get();
+      return snapshot.docs.map(_sessionFromDoc).toList();
+    } catch (_) {
+      // Fallback sorting in case of index delay or pending local server timestamp
+      final snapshot = await _sessions.get();
+      final list = snapshot.docs.map(_sessionFromDoc).toList();
+      list.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      return list;
+    }
   }
 
   @override
@@ -109,6 +117,7 @@ class FirestoreHistoryRepository implements HistoryRepository {
     final sessionDoc = await _sessions.doc(sessionId).get();
     final sessionData = sessionDoc.data();
     final categoryName = sessionData?['categoryName'] as String? ?? '';
+    final challengeId = sessionData?['challengeId'] as int? ?? 0;
 
     // Look up the Category enum by name to get its criteria list.
     final category = Category.values
@@ -116,18 +125,26 @@ class FirestoreHistoryRepository implements HistoryRepository {
         .firstOrNull;
     final criteria = category?.criteria ?? Criteria.core;
 
-    final snapshot =
-        await _attempts(sessionId).orderBy(FieldPath.documentId).get();
-    return snapshot.docs.map((doc) {
+    QuerySnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await _attempts(sessionId).orderBy(FieldPath.documentId).get();
+    } catch (_) {
+      snapshot = await _attempts(sessionId).get();
+    }
+
+    final attempts = snapshot.docs.map((doc) {
       final data = doc.data();
       return SessionAttempt(
-        attempt: _attemptFromData(doc.id, data),
+        attempt: _attemptFromData(doc.id, data, challengeId),
         feedback: _feedbackFromData(
           data['feedback'] as Map<String, dynamic>,
           criteria,
         ),
       );
     }).toList();
+
+    attempts.sort((a, b) => a.attempt.attemptNumber.compareTo(b.attempt.attemptNumber));
+    return attempts;
   }
 
   @override
@@ -156,10 +173,10 @@ class FirestoreHistoryRepository implements HistoryRepository {
     );
   }
 
-  Attempt _attemptFromData(String docId, Map<String, dynamic> data) {
+  Attempt _attemptFromData(String docId, Map<String, dynamic> data, int challengeId) {
     return Attempt(
       id: int.tryParse(docId) ?? 0,
-      challengeId: 0, // not stored per-attempt; comes from session
+      challengeId: challengeId,
       text: data['text'] as String? ?? '',
       attemptNumber: int.tryParse(docId) ?? 1,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),

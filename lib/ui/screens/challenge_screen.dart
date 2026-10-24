@@ -23,6 +23,26 @@ class ChallengeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('${category.label} Challenges'),
+        actions: [
+          IconButton(
+            tooltip: 'History',
+            onPressed: () => context.go(AppRouter.history),
+            icon: const Icon(Icons.history_outlined),
+          ),
+          IconButton(
+            tooltip: 'Home',
+            onPressed: () => context.go(AppRouter.home),
+            icon: const Icon(Icons.home_outlined),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(Providers.authRepositoryProvider).signOut();
+            },
+            icon: const Icon(Icons.logout_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -39,11 +59,11 @@ class ChallengeScreen extends ConsumerWidget {
                   maxCrossAxisExtent: 460,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  mainAxisExtent: 210
+                  mainAxisExtent: 210,
                 ),
                 itemCount: challenges.length,
                 itemBuilder: (context, index) =>
-                    _ChallengeCard(challenge: challenges[index], isGridMode: true,),
+                    _ChallengeCard(challenge: challenges[index], isGridMode: true),
               );
             }
 

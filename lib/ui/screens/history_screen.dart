@@ -12,9 +12,9 @@ import 'package:wriport/router.dart';
 import 'package:wriport/ui/category_icons.dart';
 import 'package:wriport/ui/widgets/score_card.dart';
 
-/// FutureProvider that loads all sessions from Firestore.
-final _sessionsProvider = FutureProvider<List<Session>>((ref) {
-  return ref.read(Providers.historyRepositoryProvider).getSessions();
+/// AutoDispose FutureProvider that loads all sessions from Firestore.
+final _sessionsProvider = FutureProvider.autoDispose<List<Session>>((ref) {
+  return ref.watch(Providers.historyRepositoryProvider).getSessions();
 });
 
 class HistoryScreen extends ConsumerWidget {
@@ -26,7 +26,24 @@ class HistoryScreen extends ConsumerWidget {
     final sessionsAsync = ref.watch(_sessionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Session history')),
+      appBar: AppBar(
+        title: const Text('Session history'),
+        actions: [
+          IconButton(
+            tooltip: 'Home',
+            onPressed: () => context.go(AppRouter.home),
+            icon: const Icon(Icons.home_outlined),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(Providers.authRepositoryProvider).signOut();
+            },
+            icon: const Icon(Icons.logout_outlined),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: sessionsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -107,7 +124,7 @@ class HistoryScreen extends ConsumerWidget {
                             final session = sessions[index];
                             return _SessionCard(
                               session: session,
-                              onTap: () => context.push(
+                              onTap: () => context.go(
                                 AppRouter.sessionDetail(session.id),
                               ),
                               onDelete: () => _confirmDelete(
