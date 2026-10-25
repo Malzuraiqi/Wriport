@@ -2,9 +2,9 @@
 
 > Practice writing. Get coached, not corrected.
 
-Wriport is a Flutter app where you complete real-world writing challenges (emails, blog posts) and receive AI feedback on your work. The AI acts as a **coach, not a ghostwriter**: it scores your writing and explains how to improve it, but it never rewrites the text for you.
+Wriport is a Flutter app where you complete real-world writing challenges (emails, blog posts, essays, reports, and more) and receive AI feedback on your work. The AI acts as a **coach, not a ghostwriter**: it scores your writing and explains how to improve it, but it never rewrites the text for you.
 
-**Current version:** `v0.3.1` (fixes patch on top of Increment 3: testability, pure domain layer, friendlier errors)
+**Current version:** `v0.4` (Increment 4: Backend, accounts, and persistence)
 
 ---
 
@@ -15,13 +15,14 @@ Wriport is a Flutter app where you complete real-world writing challenges (email
 3. [Screenshots](#screenshots)
 4. [Tech stack](#tech-stack)
 5. [Architecture](#architecture)
-6. [Project structure](#project-structure)
-7. [Getting started](#getting-started)
-8. [Testing](#testing)
-9. [Development approach](#development-approach)
-10. [Roadmap](#roadmap)
-11. [Known limitations](#known-limitations)
-12. [Author and license](#author-and-license)
+6. [Security & Privacy](#security--privacy)
+7. [Project structure](#project-structure)
+8. [Getting started](#getting-started)
+9. [Testing](#testing)
+10. [Development approach](#development-approach)
+11. [Roadmap](#roadmap)
+12. [Known limitations](#known-limitations)
+13. [Author and license](#author-and-license)
 
 ---
 
@@ -36,164 +37,223 @@ Most AI writing tools write *for* you. Wriport does the opposite: you write, and
 
 Then you rewrite and try again, and the app shows whether you actually improved.
 
+---
+
 ## Features
 
 **Implemented**
 
-- Challenge lists for eight categories: Email, Blog Post, Prompt, Report, Social Media Post, Essay, Product Description, and Technical Documentation
-- Writing screen with instructions, tone and word-range chips, and a live word counter
-- Real AI evaluation through Google Gemini
-- Feedback screen with an animated overall score, per-criterion scores, strengths and improvements
-- **Revision loop (v0.2):**
-  - up to 3 attempts per challenge
-  - your previous text stays in the editor so you revise instead of starting over
-  - previous improvements are shown while you rewrite
-  - current vs previous score comparison, with the difference per attempt
-  - attempt history with expandable details
-- **More categories (v0.3):**
-  - 8 categories with 3-4 challenges each
-  - each category defines its own icon, description, and evaluation criteria
-  - the Gemini prompt and the fake service build their criteria list from the category, instead of a fixed set
-  - adding a new category means editing only the category definition and the challenge data — no UI or service changes
-- Responsive layout 
-- Loading and error handling, including a safe fallback when the AI call fails
-- Basic protection against prompt injection 
+- **Category & Challenge Library (v0.1 & v0.3):**
+  - 8 categories: Email, Blog Post, Prompt, Report, Social Media Post, Essay, Product Description, and Technical Documentation
+  - 3-4 challenges per category with tailored personas and criteria definitions
+  - Instructions, tone chips, target word range chips, and a live word counter
+- **Real AI Evaluation:**
+  - Fast, structured evaluation powered by Google Gemini (`gemini-3.1-flash-lite`)
+  - Animated overall score, per-criterion score bars, strengths, and actionable improvements
+- **Revision Loop (v0.2):**
+  - Up to 3 attempts per session
+  - Retains previous text for quick editing and compares current vs. previous scores
+  - Feedback screen shows improvement suggestions while revising
+- **Accounts & Authentication (v0.4):**
+  - User registration and sign-in with Email & Password
+  - Google Sign-In support
+  - Declarative authentication state routing with `go_router` redirect guards
+- **Cloud Firestore Persistence (v0.4):**
+  - Automatic saving of sessions and individual attempts after successful AI evaluation
+  - Resilient save handling: if saving fails, feedback remains on-screen with an immediate retry option
+  - Cross-device sync: user practices on one device, closes the app, logs in on another device, and sees past history
+  - Dedicated History screen displaying past sessions sorted by date, with best scores and challenge titles
+  - Read-only session detail view inspecting previous attempts, written drafts, and feedback breakdown
+  - Session deletion with clean batch removal of session data and subcollections
+- **Robust Security (v0.4):**
+  - Zero API keys in client-side code; requests proxy through Firebase AI Logic
+  - Fine-grained Firestore security rules restricting data access strictly to authenticated document owners
 
 **Not yet implemented:** see the [Roadmap](#roadmap).
+
+---
 
 ## Screenshots
 
 | Home | Writing | Feedback | History |
 |------|---------|----------|---------|
-| ![Home Screen](/docs/screenshots/HomeScreen.png) | ![Writing Screen](/docs/screenshots/WritingScreen.png) | ![Feedback Screen](/docs/screenshots/FeedbackScreen.png) | ![Histor Overlay](/docs/screenshots/HistoryOverlay.png) |
+| ![Home Screen](/docs/screenshots/HomeScreen.png) | ![Writing Screen](/docs/screenshots/WritingScreen.png) | ![Feedback Screen](/docs/screenshots/FeedbackScreen.png) | ![History Screen](/docs/screenshots/HistoryOverlay.png) |
+
+---
 
 ## Tech stack
 
 | Area | Choice | Why |
 |------|--------|-----|
-| Framework | Flutter (Dart) | One codebase, Android first, other platforms possible later |
-| State management | Riverpod (`flutter_riverpod`) | Testable, no dependency on widgets, easy to swap services |
-| AI | Google Gemini (`gemini-3.1-flash-lite`) via `google_generative_ai` | Fast, low cost, supports JSON output |
-| Config | `flutter_dotenv` | Keeps the API key out of source code |
-| Navigation | go_router | Declarative routes, ids in the URL, redirect guards |
+| Framework | Flutter (Dart `^3.13.5`) | Cross-platform (Android, Web, iOS), reactive UI |
+| State management | Riverpod (`flutter_riverpod`) | Pure Dart testability, decoupled from UI, seamless service overriding |
+| AI | Google Gemini (`gemini-3.1-flash-lite`) via Firebase AI Logic (`firebase_ai`) | Zero client-side API keys, server-side credential enforcement, JSON mode |
+| Authentication | Firebase Auth (`firebase_auth`, `google_sign_in`) | Secure user sessions, email/password & Google OAuth |
+| Database | Cloud Firestore (`cloud_firestore`) | Real-time cloud sync, structured document/subcollection hierarchy, offline cache |
+| Navigation | go_router | Declarative URL routes, deep linking, authentication redirect guards |
 
-> **Note:** the `google_generative_ai` package is deprecated by Google. It still works for development. See [Known limitations](#known-limitations).
+---
 
 ## Architecture
 
-The app is split into four layers. Each layer only depends on the ones below it.
+The app is split into four layers following clean architecture principles. Each layer only depends on the ones below it.
 
 ```
         UI  (screens, widgets)
          |
         State  (Riverpod controllers)
          |
-        Domain  (models + EvaluationService interface)
+        Domain  (models, interfaces, exceptions)
          ^
          |  implements
-        Data  (Gemini service, Fake service, repositories)
+        Data  (Firebase services, Firestore & In-memory repositories)
 ```
 
 ### Key classes
 
 | Class | Layer | Responsibility |
 |-------|-------|----------------|
-| `Challenge` | Domain | Describes a writing task (instructions, tone, word range) |
-| `Category` | Domain | Enum: label, description, and the criteria used to evaluate it. Icons are a UI concern — mapped in `ui/category_icons.dart` |
-| `Attempt` | Domain | One submission by the user, including a computed word count |
-| `FeedBack` / `CriterionScore` | Domain | The evaluation result |
+| `Challenge` / `Category` | Domain | Writing task constraints, tones, and category-specific evaluation criteria |
+| `Attempt` / `FeedBack` / `CriterionScore` | Domain | Models for submission text, word counts, and AI evaluation output |
+| `Session` / `SessionAttempt` | Domain | Persistence models linking challenges, best scores, and successive attempts |
+| `AppUser` | Domain | Authenticated user profile entity |
 | `EvaluationService` | Domain | Interface: `evaluate(Challenge, Attempt) -> Future<FeedBack>` |
-| `EvaluationException` | Domain | The single error type services throw |
-| `GeminiEvaluationService` | Data | Builds the prompt (via `buildPrompt`), calls Gemini, parses the JSON reply |
-| `FakeEvaluationService` | Data | Returns simulated feedback for UI work |
-| `ChallengeRepository` | Data | Provides challenges per category (hardcoded for now) |
-| `AttemptController` / `AttemptState` | State | Holds attempts, feedback, attempt limit and loading/error status |
-| `AppConstants` | Core | App-wide constants (maximum attempts) |
+| `AuthRepository` | Domain | Interface: authentication stream, sign-in, sign-up, sign-out |
+| `HistoryRepository` | Domain | Interface: session lifecycle, saving attempts, score updates, deletion |
+| `FirebaseAiEvaluationService` | Data | Calls Gemini via Firebase AI Logic without exposing API keys |
+| `FirestoreHistoryRepository` | Data | Cloud Firestore persistence under `/users/{uid}/sessions/...` |
+| `FirebaseAuthRepository` | Data | Firebase Authentication integration |
+| `InMemoryHistoryRepository` | Data | Fast, isolated in-memory repository used for unit and controller testing |
+| `InMemoryAuthRepository` | Data | In-memory authentication repository used for testing |
+| `AttemptController` / `AttemptState` | State | Manages writing workflow, auto-saves attempts, manages retry state |
 
-### Data flow (one submission)
+---
 
-```
-WritingScreen --submit--> AttemptController --evaluate--> EvaluationService
-                                   |                              |
-                                   |<--------- FeedBack ----------|
-                                   v
-                             AttemptState --watch--> FeedbackScreen
-```
+## Security & Privacy
+
+Starting with **v0.4**, Wriport incorporates production-grade security practices:
+
+1. **No API Keys in Client Binaries:**
+   - Previous versions used client-side `.env` configuration. In `v0.4`, the client communicates through **Firebase AI Logic (`firebase_ai`)**.
+   - Gemini API keys are held server-side by Firebase and Google Cloud, preventing extraction via reverse engineering, decompilation, or network inspection.
+2. **Strict Firestore Security Rules (`firestore.rules`):**
+   - User data is compartmentalized under `/users/{userId}`.
+   - All read and write operations require valid Firebase Authentication and enforce ownership:
+     ```javascript
+     rules_version = '2';
+     service cloud.firestore {
+       match /databases/{database}/documents {
+         match /users/{userId} {
+           allow read, write: if request.auth != null && request.auth.uid == userId;
+
+           match /sessions/{sessionId} {
+             allow read, write: if request.auth != null && request.auth.uid == userId;
+
+             match /attempts/{attemptId} {
+               allow read, write: if request.auth != null && request.auth.uid == userId;
+             }
+           }
+         }
+       }
+     }
+     ```
+3. **Data Isolation:**
+   - Users can only view, mutate, or delete their own sessions and attempts.
+
+---
 
 ## Project structure
 
 ```
 lib/
-├── main.dart / app.dart / providers.dart / router.dart   Entry point, MaterialApp, all providers (the service swap point), Route table + URL guards
-├── core/        App-wide constants
-├── domain/      Models + the EvaluationService interface (pure Dart, no Flutter)
-├── data/        Gemini & fake services, challenge repository
-├── state/       AttemptController + AttemptState
-└── ui/          Screens, widgets, theme, category_icons.dart (Category -> IconData)
+├── main.dart / app.dart / providers.dart / router.dart   Entry point, MaterialApp, Riverpod providers, Route table + auth guards
+├── core/                  App constants and theme definitions
+├── domain/
+│   ├── models/            Challenge, Attempt, FeedBack, Session, AppUser
+│   ├── repositories/      AuthRepository, HistoryRepository
+│   └── services/          EvaluationService, EvaluationPrompt, Exceptions
+├── data/
+│   ├── repositories/      FirestoreHistoryRepository, FirebaseAuthRepository, InMemory repositories
+│   └── services/          FirebaseAiEvaluationService, FakeEvaluationService
+├── state/                 AttemptController, AttemptState, AuthState
+└── ui/
+    ├── screens/           Auth, Home, Challenge, Writing, Feedback, History, SessionDetail
+    └── widgets/           Score cards, chips, dialogs, criterion bars, app bars
 
 test/
-├── attempt_test.dart
-├── attempt_state_test.dart
-├── attempt_controller_test.dart
-├── feedback_test.dart
-├── challenge_repository_test.dart        Every category has challenges; data is sane
-└── gemini_evaluation_service_test.dart   The prompt contains each category's criteria
+├── attempt_controller_test.dart          Full submission flow, auto-save, failure retention, retry save, reset
+├── attempt_state_test.dart               State transitions, attempt limits, feedback comparisons
+├── attempt_test.dart                     Word counting logic and whitespace handling
+├── auth_repository_test.dart             In-memory auth lifecycle, validation, and stream events
+├── challenge_repository_test.dart        Category completeness, sanity checks, unique challenge IDs
+├── feedback_test.dart                    JSON parsing, score averaging, boundary clamping
+├── gemini_evaluation_service_test.dart   Category-specific prompt generation and criteria validation
+├── history_repository_test.dart          Session model copyWith, attempt storage, best-score updates, deletion
+└── test_helpers.dart                     Shared mock builders
 ```
 
-> Adding a category touches exactly two files: the `Category` enum in
-> `domain/models/challenge.dart` and `ChallengeRepository`. Everything else —
-> home screen, challenge screen, prompts, fake service — derives from the enum.
+---
 
 ## Getting started
 
 ### Prerequisites
 
 - Flutter SDK (Dart SDK `^3.13.5`, see `pubspec.yaml`)
-- A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
-- An Android emulator, a physical device, or Chrome for web
+- A Firebase project with Authentication (Email/Password & Google) and Cloud Firestore enabled
+- An Android emulator, physical device, or Google Chrome
 
 ### Setup
 
-1. Clone the repository
+1. **Clone the repository**
 
    ```bash
    git clone https://github.com/Malzuraiqi/Wriport.git
    cd wriport
    ```
 
-2. Install dependencies
+2. **Install dependencies**
 
    ```bash
    flutter pub get
    ```
 
-3. Create your environment file. In the project root, create a file named `.env`:
+3. **Configure Firebase**
 
+   Configure your Firebase project using the FlutterFire CLI:
+
+   ```bash
+   flutterfire configure
    ```
-   GEMINI_API_KEY=your_key_here
+
+   This generates `lib/firebase_options.dart` with your client configurations. Deploy the security rules using the Firebase CLI:
+
+   ```bash
+   firebase deploy --only firestore:rules
    ```
 
-   The file is listed as an asset in `pubspec.yaml`, so it must exist or the app will not build.
-
-4. Run the app
+4. **Run the app**
 
    ```bash
    flutter run
    ```
 
-### Running without the real AI
+### Running with simulated services (Offline/Dev Mode)
 
-To work on the UI without using API calls, open `lib/providers.dart` and make `evaluationServiceProvider` return `FakeEvaluationService()` instead of `GeminiEvaluationService()`. It waits two seconds and returns simulated feedback built from the challenge's own criteria list.
+To run or test without calling live Firebase backends:
+- In `lib/providers.dart`, `evaluationServiceProvider` can be pointed to `FakeEvaluationService()`.
+- Repository providers (`authRepositoryProvider`, `historyRepositoryProvider`) can be swapped with `InMemoryAuthRepository()` and `InMemoryHistoryRepository()`.
+
+---
 
 ## Testing
 
-Run all tests:
+Run all unit and state tests:
 
 ```bash
 flutter test
 ```
 
-Run one file:
+Run an individual test file:
 
 ```bash
 flutter test test/attempt_controller_test.dart
@@ -203,28 +263,26 @@ flutter test test/attempt_controller_test.dart
 
 | Test file | What it verifies |
 |-----------|------------------|
-| `attempt_test.dart` | The shared `countWords()` (used by both the controller and the live counter) for normal text, extra spaces, newlines and tabs, empty and whitespace-only text, punctuation |
-| `feedback_test.dart` | `FeedBack.fromJson` parses valid JSON; overall score is the rounded-down average; decimal scores are accepted; overall score is clamped to 0-100; missing lists default to empty; missing criteria throws |
-| `attempt_state_test.dart` | Initial state; `canAttempt` against the attempt limit; `latestFeedback` and `previousFeedback`; `copyWith` keeps untouched fields |
-| `attempt_controller_test.dart` | Successful submit stores attempt and feedback; loading status while waiting; attempt numbers increase; a failing service sets the error status and stores nothing; a failed submit does not use up an attempt; submitting past the limit is refused without calling the service; `reset()` clears everything |
-| `challenge_repository_test.dart` | Every category has at least one challenge (the loop fails if a category is added with no data); every category has at least 3 challenges; word ranges are sane; ids are unique |
-| `gemini_evaluation_service_test.dart` | The evaluation prompt contains every criterion of every category — id, definition, and a category-specific persona — plus the tone, word range, and user text |
+| `attempt_controller_test.dart` | Evaluation submission, attempt counting, limit enforcement, error handling, auto-saving attempts to history, session ID reuse, best-score updates, save-failure feedback retention, manual retry save, and state reset |
+| `auth_repository_test.dart` | In-memory authentication repository: sign up, sign in, Google sign in, sign out, password length validation, duplicate email handling, and auth stream broadcasts |
+| `history_repository_test.dart` | Session model `copyWith`, session creation, attempt storage with embedded feedback, conditional best-score updates, reverse-chronological ordering, and session deletion |
+| `attempt_test.dart` | Shared `countWords()` logic across normal text, extra spaces, tabs, newlines, empty strings, and punctuation |
+| `feedback_test.dart` | `FeedBack.fromJson` parser, score rounding, decimal tolerance, 0-100 clamping, missing list defaults, and invalid JSON error handling |
+| `attempt_state_test.dart` | Initial state, `canAttempt` calculation against max attempts, `latestFeedback` / `previousFeedback` diffing, and `copyWith` |
+| `challenge_repository_test.dart` | Challenges exist for all categories, minimum challenge counts, sane word limits, and unique IDs |
+| `gemini_evaluation_service_test.dart` | Dynamic prompt builder includes every criterion ID, definition, and persona per category |
 
->Run `flutter test` for the current count.
-
-### Not tested yet
-
-- Widget (UI) tests
-- The Gemini network call itself (prompt generation is covered; an integration test is planned)
+---
 
 ## Development approach
 
-- **Agile as the philosophy:** build the most valuable thing, test it, learn, adjust.
-- **Incremental delivery:** every increment ends with a complete, working app.
-- **Vertical slices:** each increment builds one full path through the system (UI to AI to feedback) instead of one layer at a time.
-- **Replaceable technologies:** AI provider, storage and navigation sit behind boundaries so they can change without rewrites.
-- **Git workflow:** one branch per increment, merged when it is working, and tagged (`v0.1`, `v0.2`, ...).
-- **UI workflow:** screens are designed in Figma, and the widget code is generated from the designs and then reviewed. State, logic and tests are written by hand.
+- **Agile as the philosophy:** Build the most valuable feature first, verify with tests, learn, and iterate.
+- **Incremental delivery:** Every increment delivers a complete, runnable slice of functionality.
+- **Vertical slices:** Increments connect UI, state, domain logic, and backend storage end-to-end.
+- **Replaceable technologies:** AI services, authentication, and persistence sit behind clean domain repository interfaces to allow swapping backends without UI changes.
+- **Git workflow:** Feature branches merged when stable and tagged (`v0.1`, `v0.2`, `v0.3`, `v0.4`).
+
+---
 
 ## Roadmap
 
@@ -232,19 +290,20 @@ flutter test test/attempt_controller_test.dart
 - [x] **Increment 1:** Core loop (one writing evaluation from start to finish) `v0.1`
 - [x] **Increment 2:** Revision loop (attempt limit, previous attempts, comparing feedback) `v0.2`
 - [x] **Increment 3:** More categories (a category is data, not new code) `v0.3`
-- [ ] **Increment 4:** Backend, accounts and persistence (secure AI calls, replace deprecated SDK, go_router, saved history)
+- [x] **Increment 4:** Backend, accounts and persistence (Firebase Auth, Cloud Firestore, secure AI calls via Firebase AI Logic, saved history, session details, deletion) `v0.4`
 - [ ] **Increment 5:** Progress tracking (averages, improvement over time, common weaknesses)
 
-**Out of scope for now:** social features, custom-trained models, multi-platform polish.
+**Out of scope for now:** social features, custom-trained models, multi-platform desktop polish.
+
+---
 
 ## Known limitations
 
-- The Gemini SDK in use is deprecated and will be replaced in Increment 4.
-- The API key ships with the app (development only, see the security note).
-- Challenges are hardcoded; there is no storage, so attempts are lost when the app closes.
-- Feedback quality depends on the model and can vary between runs.
-- The AI is not told about previous attempts, so it does not judge whether earlier feedback was addressed.
-- English writing only. [FILL IN: confirm or change]
+- Challenges are currently defined in local challenge repository datasets; remote challenge management will come in future increments.
+- Feedback nuance depends on Gemini's inference and may vary between runs.
+- English writing evaluation only.
+
+---
 
 ## Author and license
 
