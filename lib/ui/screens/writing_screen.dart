@@ -1,19 +1,9 @@
-// writing screen:
-// challenge details (instructions + constraint chips),
-// a writing field with a live word counter and progress towards the target,
-// and a submit button that navigates to the feedback screen.
-//
-// BUG FIX vs. the original: isIdle/isError used to be computed BEFORE the
-// await submit(...) call, so the navigation / error-snackbar logic could
-// never see the updated status. We now read the state AFTER the await.
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-<<<<<<< HEAD
 import 'package:go_router/go_router.dart';
 import 'package:wriport/domain/models/attempt.dart';
-=======
->>>>>>> parent of a46bcd3 (v0.3.1: single word-count source, pure domain, criteria definitions in prompt, friendly errors + timeout, home grid)
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/router.dart';
@@ -49,7 +39,9 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     final attemptState = ref.read(Providers.attemptControllerProvider);
     final lastAttempt = attemptState.attempts.lastOrNull;
     final isSameChallenge =
-        lastAttempt != null && lastAttempt.challengeId == widget.challengeId;
+        lastAttempt != null &&
+        lastAttempt.challengeId == widget.challengeId &&
+        attemptState.canAttempt;
 
     // Only reset if previously working on a different challenge
     if (attemptState.attempts.isNotEmpty && !isSameChallenge) {
@@ -79,9 +71,23 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   }
 
   Future<void> _submit(Challenge challenge) async {
-    await ref
+    final countBefore =
+        ref.read(Providers.attemptControllerProvider).feedbacks.length;
+    final evaluated = Completer<void>();
+    final sub = ref.listenManual(Providers.attemptControllerProvider, (_, next) {
+      if (next.feedbacks.length > countBefore ||
+          next.status == AttemptStatus.error) {
+        if (!evaluated.isCompleted) evaluated.complete();
+      }
+    });
+    unawaited(ref
         .read(Providers.attemptControllerProvider.notifier)
-        .submit(challenge, _textController.text, _wordCount);
+        .submit(challenge, _textController.text)
+        .whenComplete(() {
+      if (!evaluated.isCompleted) evaluated.complete();
+    }));
+    await evaluated.future;
+    sub.close();
 
     if (!mounted) return;
 

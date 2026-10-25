@@ -9,11 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wriport/router.dart';
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
-<<<<<<< HEAD
 import 'package:wriport/ui/category_icons.dart';
-=======
-import 'challenge_screen.dart';
->>>>>>> parent of a46bcd3 (v0.3.1: single word-count source, pure domain, criteria definitions in prompt, friendly errors + timeout, home grid)
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -32,7 +28,10 @@ class HomeScreen extends ConsumerWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     final user = ref.watch(Providers.currentUserProvider);
-    final displayName = user?.displayName ?? user?.email.split('@').first ?? 'Writer';
+    final name = user?.displayName?.trim();
+    final displayName = (name != null && name.isNotEmpty)
+        ? name
+        : user?.email.split('@').first ?? 'Writer';
 
     final cards = Category.values.map((category) {
       return _CategoryCard(
@@ -102,14 +101,17 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 28),
                       if (isWide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (var i = 0; i < cards.length; i++) ...[
-                              if (i > 0) const SizedBox(width: 16),
-                              Expanded(child: cards[i]),
-                            ],
-                          ],
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 300,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 0.9,
+                          ),
+                          itemCount: cards.length,
+                          itemBuilder: (context, index) => cards[index],
                         )
                       else
                         Column(

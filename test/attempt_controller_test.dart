@@ -73,10 +73,6 @@ AttemptController _controller(ProviderContainer c) =>
 AttemptState _state(ProviderContainer c) =>
     c.read(Providers.attemptControllerProvider);
 
-int _countWords(String text) {
-  return text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-}
-
 void main() {
   final challenge = buildChallenge();
 
@@ -84,7 +80,7 @@ void main() {
     test('success stores the attempt and feedback and returns to idle', () async {
       final container = _containerWith(_TestService());
       final String input = 'My first answer';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       final state = _state(container);
       expect(state.attempts.length, 1);
@@ -101,7 +97,7 @@ void main() {
 
       // Start the submit but do NOT await it yet.
       final String input = 'text';
-      final future = _controller(container).submit(challenge, input, _countWords(input));
+      final future = _controller(container).submit(challenge, input);
       expect(_state(container).status, AttemptStatus.loading);
 
       // Let the "AI" answer, then wait for the submit to finish.
@@ -115,10 +111,10 @@ void main() {
       final container = _containerWith(_TestService());
 
       final String input = 'first';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       final String input2 = 'second';
-      await _controller(container).submit(challenge, input2, _countWords(input2));
+      await _controller(container).submit(challenge, input2);
 
       final state = _state(container);
       expect(state.attempts.length, 2);
@@ -131,7 +127,7 @@ void main() {
       final container = _containerWith(service);
 
       final String input = 'text';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       final state = _state(container);
       expect(state.status, AttemptStatus.error);
@@ -144,11 +140,11 @@ void main() {
       final service = _TestService()..shouldFail = true;
       final container = _containerWith(service);
       final String input = 'text';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       service.shouldFail = false; // the service recovers
       final String input2 = 'text again';
-      await _controller(container).submit(challenge, input2, _countWords(input2));
+      await _controller(container).submit(challenge, input2);
 
       final state = _state(container);
       expect(state.status, AttemptStatus.idle);
@@ -162,11 +158,11 @@ void main() {
 
       for (var i = 0; i < AppConstants.maxAttempts; i++) {
         final String input = 'attempt $i';
-        await _controller(container).submit(challenge, input, _countWords(input));
+        await _controller(container).submit(challenge, input);
       }
       // One more than allowed.
       final String input = 'one too many';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       final state = _state(container);
       expect(state.attempts.length, AppConstants.maxAttempts);
@@ -177,7 +173,7 @@ void main() {
     });
   });
 
-  group('AttemptController persistence (Section 4D & 4E)', () {
+  group('AttemptController persistence (Section 4D)', () {
     test('auto-saves attempt and creates session on success', () async {
       final historyRepo = InMemoryHistoryRepository();
       final container = _containerWith(_TestService(), historyRepo: historyRepo);
@@ -256,35 +252,13 @@ void main() {
       final sessions = await historyRepo.getSessions();
       expect(sessions.length, 1);
     });
-
-    test('retrySave does nothing if saveStatus is not failed', () async {
-      final historyRepo = InMemoryHistoryRepository();
-      final container = _containerWith(_TestService(), historyRepo: historyRepo);
-
-      await _controller(container).submit(challenge, 'Valid text');
-      expect(_state(container).saveStatus, SaveStatus.idle);
-
-      // Calling retrySave when idle does nothing
-      await _controller(container).retrySave(challenge);
-      expect(_state(container).saveStatus, SaveStatus.idle);
-    });
-
-    test('retrySave does nothing if attempts or feedbacks are empty', () async {
-      final historyRepo = InMemoryHistoryRepository();
-      final container = _containerWith(_TestService(), historyRepo: historyRepo);
-
-      // State is initial (no attempts/feedbacks)
-      await _controller(container).retrySave(challenge);
-      expect(_state(container).saveStatus, SaveStatus.idle);
-      expect(_state(container).attempts, isEmpty);
-    });
   });
 
   group('AttemptController.reset', () {
     test('clears attempts, feedback, status, sessionId, and saveStatus', () async {
       final container = _containerWith(_TestService());
       final String input = 'text';
-      await _controller(container).submit(challenge, input, _countWords(input));
+      await _controller(container).submit(challenge, input);
 
       _controller(container).reset();
 

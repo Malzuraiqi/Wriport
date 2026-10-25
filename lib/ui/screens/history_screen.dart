@@ -124,7 +124,7 @@ class HistoryScreen extends ConsumerWidget {
                             final session = sessions[index];
                             return _SessionCard(
                               session: session,
-                              onTap: () => context.go(
+                              onTap: () => context.push(
                                 AppRouter.sessionDetail(session.id),
                               ),
                               onDelete: () => _confirmDelete(
@@ -241,6 +241,9 @@ class HistoryScreen extends ConsumerWidget {
         await ref
             .read(Providers.historyRepositoryProvider)
             .deleteSession(session.id);
+        if (ref.read(Providers.attemptControllerProvider).sessionId == session.id) {
+          ref.read(Providers.attemptControllerProvider.notifier).reset();
+        }
         // Refresh the sessions list
         ref.invalidate(_sessionsProvider);
         if (context.mounted) {

@@ -1,8 +1,13 @@
-// and exception class for the evaluation services
 class EvaluationException implements Exception {
+  /// User-friendly message — safe to show in the UI (snackbar / error state).
   final String message;
-  EvaluationException(this.message);
+
+  /// Technical detail for debugging only. Services attach the raw error
+  /// here and log it with debugPrint.
+  final String? detail;
+
+  EvaluationException(this.message, {this.detail});
 
   @override
-  String toString() => message;
+  String toString() => detail == null ? message : '$message (detail: $detail)';
 }

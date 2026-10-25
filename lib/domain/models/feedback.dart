@@ -55,7 +55,7 @@ class FeedBack {
     }
 
     int avg = requiredCriterias.isNotEmpty
-      ? (sum / requiredCriterias.length).toInt()
+      ? (sum / requiredCriterias.length).round()
       : 0;
 
     int finalScore = avg.clamp(0, 100);

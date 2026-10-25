@@ -40,7 +40,9 @@ class InMemoryHistoryRepository implements HistoryRepository {
   }) async {
     if (shouldFail) throw Exception('Simulated saveAttempt failure');
     _attempts[sessionId] ??= [];
-    _attempts[sessionId]!.add(SessionAttempt(attempt: attempt, feedback: feedback));
+    _attempts[sessionId]!
+      ..removeWhere((a) => a.attempt.attemptNumber == attempt.attemptNumber)
+      ..add(SessionAttempt(attempt: attempt, feedback: feedback));
   }
 
   @override

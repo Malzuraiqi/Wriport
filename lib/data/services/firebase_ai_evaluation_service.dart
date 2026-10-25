@@ -49,6 +49,12 @@ class FirebaseAiEvaluationService implements EvaluationService {
         detail: 'Firebase AI request timed out after ${evaluationTimeout.inSeconds}s: $e',
       );
     } on FirebaseException catch (e) {
+      if (e.code != 'network-request-failed') {
+        throw EvaluationException(
+          'Something went wrong while evaluating your writing. Please try again.',
+          detail: 'Firebase error ${e.code}: $e',
+        );
+      }
       if (e.code == 'network-request-failed') {
         throw EvaluationException(
           'Check your internet connection and try again.',

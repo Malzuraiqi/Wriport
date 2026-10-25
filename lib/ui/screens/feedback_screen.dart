@@ -161,14 +161,21 @@ class FeedbackScreen extends ConsumerWidget {
             );
 
             final restartButton = FilledButton.icon(
-              onPressed: () => Navigator.popUntil(context, ModalRoute.withName('/challenges')), 
+              onPressed: () {
+                final id = attemptState.attempts.lastOrNull?.challengeId;
+                final challenge = id == null ? null : ref.read(Providers.challengeProvider(id));
+                context.go(challenge == null
+                    ? AppRouter.home
+                    : AppRouter.challengeList(challenge.category));
+              },
               icon: const Icon(Icons.arrow_back_rounded),
               label: const Text("Back to challenges")
             );
 
             // Save-failure banner with retry
+            Widget? saveBanner;
             if (attemptState.saveStatus == SaveStatus.failed) {
-              Container(
+              saveBanner = Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -207,7 +214,7 @@ class FeedbackScreen extends ConsumerWidget {
                 ),
               );
             } else if (attemptState.saveStatus == SaveStatus.saving) {
-              Container(
+              saveBanner = Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -249,6 +256,7 @@ class FeedbackScreen extends ConsumerWidget {
                     children: [
                       AttemptsPill(displayAttemptNumber: attemptState.attempts.length),
                       const SizedBox(height: 24),
+                      if (saveBanner != null) saveBanner,
                       scoreHeader,
                       const SizedBox(height: 24),
                       if (isWide)
