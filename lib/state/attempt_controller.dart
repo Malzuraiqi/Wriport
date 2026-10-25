@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:wriport/core/app_constants.dart';
 import 'package:wriport/domain/services/evaluation_exception.dart';
 
@@ -7,15 +6,19 @@ import 'attempt_state.dart';
 import '../domain/models/challenge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
+//AttemptController
+//  + submit(text)  creates Attempt, calls the service,
+//                  stores Feedback, updates status
+//  + reset()       clears state for a new challenge
 
 
 class AttemptController extends Notifier<AttemptState> {
   @override
-  AttemptState build() { 
+  AttemptState build() { // the initial state when first accessed
     return AttemptState.initial();
   }
-
-  Future<void> submit(Challenge challenge, String text) async {
+  // Method to submit an attempt
+  Future<void> submit(Challenge challenge, String text, int wordCount) async {
     if (!state.canAttempt) {
       state = state.copyWith(
         status: AttemptStatus.error,
@@ -24,13 +27,14 @@ class AttemptController extends Notifier<AttemptState> {
       return;
     }
 
+    // Create a new Attempt object
     final attempt = Attempt(
       id: state.attempts.length + 1,
       challengeId: challenge.id,
       text: text,
       createdAt: DateTime.now(),
       attemptNumber: state.attempts.length + 1,
-      wordCount: countWords(text),
+      wordCount: wordCount
     );
 
     // Update state to loading
@@ -51,14 +55,11 @@ class AttemptController extends Notifier<AttemptState> {
       // Auto-save to Firestore after a successful evaluation
       await _saveToHistory(challenge, attempt, feedback);
     } on EvaluationException catch (e) {
-      // e.message is user-friendly; the technical detail was already logged
-      // by the service that threw it.
       state = state.copyWith(
         status: AttemptStatus.error,
         errorMessage: e.message,
       );
     } catch (e) {
-      debugPrint('Unexpected error during submit: $e');
       // Update state to error if evaluation fails
       state = state.copyWith(
         status: AttemptStatus.error,

@@ -1,7 +1,19 @@
+// writing screen:
+// challenge details (instructions + constraint chips),
+// a writing field with a live word counter and progress towards the target,
+// and a submit button that navigates to the feedback screen.
+//
+// BUG FIX vs. the original: isIdle/isError used to be computed BEFORE the
+// await submit(...) call, so the navigation / error-snackbar logic could
+// never see the updated status. We now read the state AFTER the await.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+<<<<<<< HEAD
 import 'package:go_router/go_router.dart';
 import 'package:wriport/domain/models/attempt.dart';
+=======
+>>>>>>> parent of a46bcd3 (v0.3.1: single word-count source, pure domain, criteria definitions in prompt, friendly errors + timeout, home grid)
 import 'package:wriport/domain/models/challenge.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/router.dart';
@@ -22,6 +34,14 @@ class WritingScreen extends ConsumerStatefulWidget {
 class _WritingScreenState extends ConsumerState<WritingScreen> {
   late final TextEditingController _textController;
   int _wordCount = 0;
+
+  static int _countWords(String text) {
+    return text
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .length;
+  }
 
   @override
   void initState() {
@@ -48,7 +68,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   }
 
   void _updateWordCount() {
-    setState(() => _wordCount = countWords(_textController.text));
+    setState(() => _wordCount = _countWords(_textController.text));
   }
 
   @override
@@ -61,7 +81,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   Future<void> _submit(Challenge challenge) async {
     await ref
         .read(Providers.attemptControllerProvider.notifier)
-        .submit(challenge, _textController.text);
+        .submit(challenge, _textController.text, _wordCount);
 
     if (!mounted) return;
 

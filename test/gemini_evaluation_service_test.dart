@@ -37,6 +37,7 @@ void main() {
       }
     });
 
+<<<<<<< HEAD
     test('prompt defines each criterion so Gemini is not judging blind', () {
       for (final category in Category.values) {
         final challenge =
@@ -76,6 +77,8 @@ void main() {
       }
     });
 
+=======
+>>>>>>> parent of a46bcd3 (v0.3.1: single word-count source, pure domain, criteria definitions in prompt, friendly errors + timeout, home grid)
     test('prompt carries the challenge constraints and user text', () {
       for (final category in Category.values) {
         for (final challenge

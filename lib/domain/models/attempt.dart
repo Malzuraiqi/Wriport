@@ -1,11 +1,3 @@
-int countWords(String text) {
-  return text
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .length;
-}
-
 class Attempt {
   // id, challengeId, text, attemptNumber, createdAt, wordCount
   Attempt({
@@ -24,5 +16,5 @@ class Attempt {
   final int attemptNumber;
   final DateTime createdAt;
   final int wordCount;
-
+  
 }

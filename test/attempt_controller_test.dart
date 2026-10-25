@@ -73,6 +73,10 @@ AttemptController _controller(ProviderContainer c) =>
 AttemptState _state(ProviderContainer c) =>
     c.read(Providers.attemptControllerProvider);
 
+int _countWords(String text) {
+  return text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+}
+
 void main() {
   final challenge = buildChallenge();
 
@@ -80,7 +84,7 @@ void main() {
     test('success stores the attempt and feedback and returns to idle', () async {
       final container = _containerWith(_TestService());
       final String input = 'My first answer';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       final state = _state(container);
       expect(state.attempts.length, 1);
@@ -97,7 +101,7 @@ void main() {
 
       // Start the submit but do NOT await it yet.
       final String input = 'text';
-      final future = _controller(container).submit(challenge, input);
+      final future = _controller(container).submit(challenge, input, _countWords(input));
       expect(_state(container).status, AttemptStatus.loading);
 
       // Let the "AI" answer, then wait for the submit to finish.
@@ -111,10 +115,10 @@ void main() {
       final container = _containerWith(_TestService());
 
       final String input = 'first';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       final String input2 = 'second';
-      await _controller(container).submit(challenge, input2);
+      await _controller(container).submit(challenge, input2, _countWords(input2));
 
       final state = _state(container);
       expect(state.attempts.length, 2);
@@ -127,7 +131,7 @@ void main() {
       final container = _containerWith(service);
 
       final String input = 'text';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       final state = _state(container);
       expect(state.status, AttemptStatus.error);
@@ -140,11 +144,11 @@ void main() {
       final service = _TestService()..shouldFail = true;
       final container = _containerWith(service);
       final String input = 'text';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       service.shouldFail = false; // the service recovers
       final String input2 = 'text again';
-      await _controller(container).submit(challenge, input2);
+      await _controller(container).submit(challenge, input2, _countWords(input2));
 
       final state = _state(container);
       expect(state.status, AttemptStatus.idle);
@@ -158,11 +162,11 @@ void main() {
 
       for (var i = 0; i < AppConstants.maxAttempts; i++) {
         final String input = 'attempt $i';
-        await _controller(container).submit(challenge, input);
+        await _controller(container).submit(challenge, input, _countWords(input));
       }
       // One more than allowed.
       final String input = 'one too many';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       final state = _state(container);
       expect(state.attempts.length, AppConstants.maxAttempts);
@@ -280,7 +284,7 @@ void main() {
     test('clears attempts, feedback, status, sessionId, and saveStatus', () async {
       final container = _containerWith(_TestService());
       final String input = 'text';
-      await _controller(container).submit(challenge, input);
+      await _controller(container).submit(challenge, input, _countWords(input));
 
       _controller(container).reset();
 

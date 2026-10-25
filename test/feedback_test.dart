@@ -10,7 +10,7 @@ Map<String, dynamic> _json(List<num> scores) {
   return {
     'criteria': [
       for (var i = 0; i < scores.length; i++)
-        {'id': criterions[i], 'score': scores[i], 'comment': 'comment $i'},
+        {'criterion': criterions[i], 'score': scores[i], 'comment': 'comment $i'},
     ],
     'strengths': ['Clear structure'],
     'improvements': ['Shorten it'],
