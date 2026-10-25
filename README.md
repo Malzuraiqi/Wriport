@@ -167,7 +167,7 @@ Starting with **v0.4**, Wriport incorporates production-grade security practices
 ```
 lib/
 ├── main.dart / app.dart / providers.dart / router.dart   Entry point, MaterialApp, Riverpod providers, Route table + auth guards
-├── core/                  App constants and theme definitions
+├── core/                  App constants
 ├── domain/
 │   ├── models/            Challenge, Attempt, FeedBack, Session, AppUser
 │   ├── repositories/      AuthRepository, HistoryRepository
