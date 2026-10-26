@@ -54,7 +54,10 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AppUser> signInWithGoogle() async {
     try {
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: '493789720301-4v0j6tjr28mjgden28a759fcu8s8tdiq.apps.googleusercontent.com'
+      );
+      
       final googleUser = await _googleSignIn.authenticate();
       
       final googleAuth = googleUser.authentication;

@@ -72,7 +72,21 @@ class HomeScreen extends ConsumerWidget {
               IconButton(
                 tooltip: 'Sign out',
                 onPressed: () async {
-                  await ref.read(Providers.authRepositoryProvider).signOut();
+                  final container = ProviderScope.containerOf(context, listen: false);
+                  final messenger = ScaffoldMessenger.of(context);
+                  try {
+                    await container.read(Providers.authRepositoryProvider).signOut();
+                    // Force the auth stream to re-read the (now signed-out) state so the
+                    // router/redirect and currentUserProvider update.
+                    container.invalidate(Providers.authStateProvider);
+                  } catch (e, st) {
+                    debugPrint('Sign out failed: $e\n$st');
+                    messenger
+                      ..clearSnackBars()
+                      ..showSnackBar(
+                        const SnackBar(content: Text('Could not sign out. Please try again.')),
+                      );
+                  }
                 },
                 icon: const Icon(Icons.logout_outlined),
               ),
