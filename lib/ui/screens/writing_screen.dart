@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +31,9 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     final attemptState = ref.read(Providers.attemptControllerProvider);
     final lastAttempt = attemptState.attempts.lastOrNull;
     final isSameChallenge =
-        lastAttempt != null && lastAttempt.challengeId == widget.challengeId;
+        lastAttempt != null &&
+        lastAttempt.challengeId == widget.challengeId &&
+        attemptState.canAttempt;
 
     // Only reset if previously working on a different challenge
     if (attemptState.attempts.isNotEmpty && !isSameChallenge) {
@@ -59,9 +63,23 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   }
 
   Future<void> _submit(Challenge challenge) async {
-    await ref
+    final countBefore =
+        ref.read(Providers.attemptControllerProvider).feedbacks.length;
+    final evaluated = Completer<void>();
+    final sub = ref.listenManual(Providers.attemptControllerProvider, (_, next) {
+      if (next.feedbacks.length > countBefore ||
+          next.status == AttemptStatus.error) {
+        if (!evaluated.isCompleted) evaluated.complete();
+      }
+    });
+    unawaited(ref
         .read(Providers.attemptControllerProvider.notifier)
-        .submit(challenge, _textController.text);
+        .submit(challenge, _textController.text)
+        .whenComplete(() {
+      if (!evaluated.isCompleted) evaluated.complete();
+    }));
+    await evaluated.future;
+    sub.close();
 
     if (!mounted) return;
 
@@ -95,7 +113,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     if (challenge == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Challenge not found')),
-        body: const Center(child: Text('This challenge does not exist')),
+        body: const _ChallengeNotFound(),
       );
     }
 
@@ -129,7 +147,11 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(challenge.title),
+          title: Text(
+            challenge.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           actions: [
             IconButton(
               tooltip: 'Home',
@@ -165,99 +187,80 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: constraints.maxWidth >= 720 ? 32 : 16,
-                  vertical: 16,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 760),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AttemptsPill(displayAttemptNumber: attemptState.attempts.length + 1),
-                        const SizedBox(height: 24),
-                        // Instructions panel
-                        InfoSectionCard(
-                          title: 'Instructions', 
-                          icon: Icons.assignment_outlined,
-                          content: challenge.instructions,
-                        ),
-                        if (attemptState.feedbacks.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          InfoSectionCard(
-                            title: 'Suggested Improvements', 
-                            icon: Icons.tips_and_updates_outlined,
-                            backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-                            foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                            contentOpacity: 0.8,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: attemptState.latestFeedback.improvements.map((item) => Text('• $item')).toList(),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        // Constraint chips
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Chip(
-                              avatar: Icon(Icons.record_voice_over_outlined,
-                                  size: 16, color: scheme.onSurfaceVariant),
-                              label: Text('Tone: ${challenge.tone}'),
-                            ),
-                            Chip(
-                              avatar: Icon(Icons.format_list_numbered,
-                                  size: 16, color: scheme.onSurfaceVariant),
-                              label: Text(
-                                  '${challenge.minWords}–${challenge.maxWords} words'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        WordCounter(
-                          wordCount: _wordCount,
-                          minWords: challenge.minWords,
-                          maxWords: challenge.maxWords,
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          keyboardType: TextInputType.multiline,
-                          minLines: 8,
-                          maxLines: null,
-                          controller: _textController,
-                          decoration: const InputDecoration(
-                            hintText: 'Start writing here...',
-                            alignLabelWithHint: true,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (isLoading) ...[
-                          const LinearProgressIndicator(),
-                          const SizedBox(height: 12),
-                        ],
-                        FilledButton.icon(
-                          onPressed: (isLoading || !canSubmit) ? null : () => _submit(challenge),
-                          icon: isLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+              final horizontalPadding = constraints.maxWidth >= 720 ? 32.0 : 16.0;
+
+              return CustomScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      8,
+                      horizontalPadding,
+                      32,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: AttemptsPill(
+                                  displayAttemptNumber:
+                                      attemptState.attempts.length + 1,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              // Instructions panel
+                              InfoSectionCard(
+                                title: 'Instructions',
+                                icon: Icons.assignment_outlined,
+                                content: challenge.instructions,
+                              ),
+                              if (attemptState.feedbacks.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                InfoSectionCard(
+                                  title: 'Suggested Improvements',
+                                  icon: Icons.tips_and_updates_outlined,
+                                  backgroundColor: scheme.tertiaryContainer,
+                                  foregroundColor: scheme.onTertiaryContainer,
+                                  contentOpacity: 0.8,
+                                  child: _ImprovementsList(
+                                    items: attemptState.latestFeedback.improvements,
                                   ),
-                                )
-                              : const Icon(Icons.send_outlined, size: 18),
-                          label: Text(isLoading ? 'Evaluating...' : 'Submit'),
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                              _ConstraintChips(
+                                tone: challenge.tone,
+                                minWords: challenge.minWords,
+                                maxWords: challenge.maxWords,
+                              ),
+                              const SizedBox(height: 24),
+                              _EditorSection(
+                                controller: _textController,
+                                wordCount: _wordCount,
+                                minWords: challenge.minWords,
+                                maxWords: challenge.maxWords,
+                              ),
+                              const SizedBox(height: 20),
+                              _SubmitSection(
+                                isLoading: isLoading,
+                                onPressed: (isLoading || !canSubmit)
+                                    ? null
+                                    : () => _submit(challenge),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               );
             },
           ),
@@ -266,87 +269,255 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
     );
   }
 
-  // The Figma-styled custom dialog
   Future<bool?> _showExitConfirmation(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    
     return showDialog<bool>(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: scheme.surface,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24), 
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, 
-              crossAxisAlignment: CrossAxisAlignment.start, 
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: scheme.errorContainer.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.warning_amber_rounded, color: scheme.error),
-                ),
-                const SizedBox(height: 20),
-                
-                Text(
-                  'Leave this question?',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                
-                Text(
-                  'Your current answer hasn\'t been submitted. If you leave now, this answer will be lost.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                ),
-                const SizedBox(height: 32),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text(
-                      'Keep writing', 
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: scheme.primaryContainer.withValues(alpha: 0.4),
-                      foregroundColor: scheme.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: const Icon(Icons.logout, size: 20),
-                    label: const Text(
-                      'Exit without saving', 
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
+      builder: (context) => const _ExitConfirmationDialog(),
+    );
+  }
+}
+
+class _ChallengeNotFound extends StatelessWidget {
+  const _ChallengeNotFound();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded,
+                size: 48, color: scheme.onSurfaceVariant),
+            const SizedBox(height: 12),
+            Text(
+              'This challenge does not exist',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImprovementsList extends StatelessWidget {
+  const _ImprovementsList({required this.items});
+
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text('• $item'),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ConstraintChips extends StatelessWidget {
+  const _ConstraintChips({
+    required this.tone,
+    required this.minWords,
+    required this.maxWords,
+  });
+
+  final String tone;
+  final int minWords;
+  final int maxWords;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        Chip(
+          visualDensity: VisualDensity.compact,
+          avatar: Icon(Icons.record_voice_over_outlined,
+              size: 16, color: scheme.onSurfaceVariant),
+          label: Text('Tone: $tone'),
+        ),
+        Chip(
+          visualDensity: VisualDensity.compact,
+          avatar: Icon(Icons.format_list_numbered,
+              size: 16, color: scheme.onSurfaceVariant),
+          label: Text('$minWords–$maxWords words'),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditorSection extends StatelessWidget {
+  const _EditorSection({
+    required this.controller,
+    required this.wordCount,
+    required this.minWords,
+    required this.maxWords,
+  });
+
+  final TextEditingController controller;
+  final int wordCount;
+  final int minWords;
+  final int maxWords;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Your response',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        WordCounter(
+          wordCount: wordCount,
+          minWords: minWords,
+          maxWords: maxWords,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          keyboardType: TextInputType.multiline,
+          minLines: 8,
+          maxLines: null,
+          controller: controller,
+          style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+          decoration: const InputDecoration(
+            hintText: 'Start writing here...',
+            alignLabelWithHint: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubmitSection extends StatelessWidget {
+  const _SubmitSection({required this.isLoading, required this.onPressed});
+
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (isLoading) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: const LinearProgressIndicator(),
+          ),
+          const SizedBox(height: 12),
+        ],
+        FilledButton.icon(
+          onPressed: onPressed,
+          icon: isLoading
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.onSurface.withValues(alpha: 0.38),
+                  ),
+                )
+              : const Icon(Icons.send_outlined, size: 18),
+          label: Text(isLoading ? 'Evaluating...' : 'Submit'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExitConfirmationDialog extends StatelessWidget {
+  const _ExitConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: scheme.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.warning_amber_rounded, color: scheme.error),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Leave this question?',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your current answer hasn\'t been submitted. If you leave now, this answer will be lost.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text(
+                    'Keep writing',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  icon: const Icon(Icons.logout, size: 20),
+                  label: const Text(
+                    'Exit without saving',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

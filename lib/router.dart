@@ -36,6 +36,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         refreshListenable: AuthChangeNotifier(ref),
         redirect: (context, state) {
             final authState = ref.read(Providers.authStateProvider);
+            if (authState.isLoading) return null;
             final isLoggedIn = authState.value != null;
             final isAuthRoute = state.matchedLocation == AppRouter.login ||
                 state.matchedLocation == AppRouter.signup;

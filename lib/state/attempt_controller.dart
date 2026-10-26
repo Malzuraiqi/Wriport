@@ -12,6 +12,7 @@ import '../providers.dart';
 class AttemptController extends Notifier<AttemptState> {
   @override
   AttemptState build() { 
+    ref.watch(Providers.authStateProvider.select((s) => s.value?.uid));
     return AttemptState.initial();
   }
 

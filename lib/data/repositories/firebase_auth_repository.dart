@@ -17,7 +17,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Stream<AppUser?> get authStateChanges =>
-      _auth.authStateChanges().map((user) => user == null ? null : _mapUser(user));
+       _auth.userChanges().map((user) => user == null ? null : _mapUser(user));
 
   @override
   AppUser? get currentUser =>
@@ -54,7 +54,10 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AppUser> signInWithGoogle() async {
     try {
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: '493789720301-4v0j6tjr28mjgden28a759fcu8s8tdiq.apps.googleusercontent.com'
+      );
+      
       final googleUser = await _googleSignIn.authenticate();
       
       final googleAuth = googleUser.authentication;
@@ -78,7 +81,11 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {
+      // Google may not be initialized (email users); Firebase sign-out must still run.
+    }
     await _auth.signOut();
   }
 
@@ -107,6 +114,8 @@ class FirebaseAuthRepository implements AuthRepository {
         return AuthException('Check your internet connection and try again.');
       case 'too-many-requests':
         return AuthException('Too many attempts. Please try again later.');
+      case 'invalid-credential':
+        return AuthException('Incorrect email or password. Please try again.');
       default:
         return AuthException('Something went wrong. Please try again.');
     }

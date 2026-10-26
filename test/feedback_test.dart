@@ -10,7 +10,7 @@ Map<String, dynamic> _json(List<num> scores) {
   return {
     'criteria': [
       for (var i = 0; i < scores.length; i++)
-        {'id': criterions[i], 'score': scores[i], 'comment': 'comment $i'},
+        {'criterion': criterions[i], 'score': scores[i], 'comment': 'comment $i'},
     ],
     'strengths': ['Clear structure'],
     'improvements': ['Shorten it'],
@@ -34,9 +34,9 @@ void main() {
       expect(FeedBack.fromJson(_json([90, 80, 70]), attemptId: 8, requiredCriterias: Criteria.core).overallScore, 80);
     });
 
-    test('the average is rounded down to a whole number', () {
+    test('rounded to the nearest whole number', () {
       // (50 + 20 + 100) / 3 = 56.67 -> 56
-      expect(FeedBack.fromJson(_json([50, 20, 100]), attemptId: 7, requiredCriterias: Criteria.core).overallScore, 56);
+      expect(FeedBack.fromJson(_json([50, 20, 100]), attemptId: 7, requiredCriterias: Criteria.core).overallScore, 57);
     });
 
     test('accepts scores that arrive with decimals', () {

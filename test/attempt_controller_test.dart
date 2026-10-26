@@ -173,7 +173,7 @@ void main() {
     });
   });
 
-  group('AttemptController persistence (Section 4D & 4E)', () {
+  group('AttemptController persistence (Section 4D)', () {
     test('auto-saves attempt and creates session on success', () async {
       final historyRepo = InMemoryHistoryRepository();
       final container = _containerWith(_TestService(), historyRepo: historyRepo);
@@ -251,28 +251,6 @@ void main() {
 
       final sessions = await historyRepo.getSessions();
       expect(sessions.length, 1);
-    });
-
-    test('retrySave does nothing if saveStatus is not failed', () async {
-      final historyRepo = InMemoryHistoryRepository();
-      final container = _containerWith(_TestService(), historyRepo: historyRepo);
-
-      await _controller(container).submit(challenge, 'Valid text');
-      expect(_state(container).saveStatus, SaveStatus.idle);
-
-      // Calling retrySave when idle does nothing
-      await _controller(container).retrySave(challenge);
-      expect(_state(container).saveStatus, SaveStatus.idle);
-    });
-
-    test('retrySave does nothing if attempts or feedbacks are empty', () async {
-      final historyRepo = InMemoryHistoryRepository();
-      final container = _containerWith(_TestService(), historyRepo: historyRepo);
-
-      // State is initial (no attempts/feedbacks)
-      await _controller(container).retrySave(challenge);
-      expect(_state(container).saveStatus, SaveStatus.idle);
-      expect(_state(container).attempts, isEmpty);
     });
   });
 

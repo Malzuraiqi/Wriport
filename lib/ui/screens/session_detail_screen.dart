@@ -39,7 +39,6 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final sessionAsync = ref.watch(_sessionProvider(widget.sessionId));
     final attemptsAsync = ref.watch(_sessionAttemptsProvider(widget.sessionId));
 
@@ -47,120 +46,180 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
     final title = session?.challengeTitle ?? 'Session';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          IconButton(
-            tooltip: 'Home',
-            onPressed: () => context.go(AppRouter.home),
-            icon: const Icon(Icons.home_outlined),
-          ),
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await ref.read(Providers.authRepositoryProvider).signOut();
-            },
-            icon: const Icon(Icons.logout_outlined),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: attemptsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: scheme.error),
-              const SizedBox(height: 12),
-              Text(
-                'Could not load attempts',
-                style: Theme.of(context).textTheme.titleMedium,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text(title),
+            actions: [
+              IconButton(
+                tooltip: 'Home',
+                onPressed: () => context.go(AppRouter.home),
+                icon: const Icon(Icons.home_outlined),
               ),
-              const SizedBox(height: 8),
-              Text(
-                e.toString(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                textAlign: TextAlign.center,
+              IconButton(
+                tooltip: 'Sign out',
+                onPressed: () async {
+                  await ref.read(Providers.authRepositoryProvider).signOut();
+                },
+                icon: const Icon(Icons.logout_outlined),
               ),
+              const SizedBox(width: 8),
             ],
           ),
-        ),
-        data: (attempts) {
-          if (attempts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inbox_outlined,
-                      size: 48, color: scheme.onSurfaceVariant),
-                  const SizedBox(height: 12),
-                  Text('No attempts in this session',
-                      style: Theme.of(context).textTheme.titleMedium),
-                ],
+          attemptsAsync.when(
+            loading: () => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: _MessageState(
+                icon: Icons.error_outline,
+                isError: true,
+                title: 'Could not load attempts',
+                message: e.toString(),
               ),
-            );
-          }
+            ),
+            data: (attempts) {
+              if (attempts.isEmpty) {
+                return const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _MessageState(
+                    icon: Icons.inbox_outlined,
+                    title: 'No attempts in this session',
+                  ),
+                );
+              }
 
-          return SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      Text(
-                        '${attempts.length} attempt${attempts.length == 1 ? '' : 's'} — read-only',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.separated(
-                          itemCount: attempts.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            final sa = attempts[index];
-                            final isExpanded = _expandedIndex == index;
+              return _AttemptsSliver(
+                attempts: attempts,
+                expandedIndex: _expandedIndex,
+                onToggle: (index) {
+                  setState(() {
+                    _expandedIndex = _expandedIndex == index ? null : index;
+                  });
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-                            return _ReadOnlyAttemptCard(
-                              sessionAttempt: sa,
-                              attemptNumber: index + 1,
-                              isExpanded: isExpanded,
-                              onTap: () {
-                                setState(() {
-                                  _expandedIndex =
-                                      isExpanded ? null : index;
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: Text(
-                          'Select an attempt to view detailed feedback.',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ),
-                    ],
+// ---------------------------------------------------------------------------
+// Private UI building blocks
+// ---------------------------------------------------------------------------
+
+/// Centered, width-constrained list of attempts with a summary header and hint.
+class _AttemptsSliver extends StatelessWidget {
+  const _AttemptsSliver({
+    required this.attempts,
+    required this.expandedIndex,
+    required this.onToggle,
+  });
+
+  final List<SessionAttempt> attempts;
+  final int? expandedIndex;
+  final ValueChanged<int> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+    final hPad = width > 752 ? (width - 720) / 2 : 16.0;
+
+    return SliverSafeArea(
+      top: false,
+      sliver: SliverPadding(
+        padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 32),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _SessionSummary(count: attempts.length),
+              ),
+            ),
+            SliverList.separated(
+              itemCount: attempts.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final isExpanded = expandedIndex == index;
+                return _ReadOnlyAttemptCard(
+                  sessionAttempt: attempts[index],
+                  attemptNumber: index + 1,
+                  isExpanded: isExpanded,
+                  onTap: () => onToggle(index),
+                );
+              },
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: Center(
+                  child: Text(
+                    'Select an attempt to view detailed feedback.',
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// Header row: attempt count + read-only badge.
+class _SessionSummary extends StatelessWidget {
+  const _SessionSummary({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$count attempt${count == 1 ? '' : 's'}',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_outline, size: 14, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Text(
+                'Read-only',
+                style: textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -181,199 +240,347 @@ class _ReadOnlyAttemptCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final feedback = sessionAttempt.feedback;
     final attempt = sessionAttempt.attempt;
     final color = scoreColor(scheme, feedback.overallScore);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isExpanded
-                ? scheme.primary
-                : scheme.outlineVariant.withValues(alpha: 0.5),
-            width: isExpanded ? 2 : 1,
-          ),
+    final criteria = feedback.criteria.map<_CriterionData>((c) {
+      final cColor = scoreColor(scheme, c.score);
+      return _CriterionData(
+        label: c.criterion.label,
+        scoreText: '${c.score}/100',
+        color: cColor,
+      );
+    }).toList();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isExpanded ? scheme.primary : scheme.outlineVariant,
+          width: isExpanded ? 2 : 1,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Row (Score, Title, Dropdown Icon)
-            Row(
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  alignment: Alignment.center,
+                // Top row: score ring, title, chevron
+                Row(
                   children: [
-                    SizedBox(
-                      width: 56,
-                      height: 56,
-                      child: CircularProgressIndicator(
-                        value: feedback.overallScore / 100,
-                        strokeWidth: 4,
-                        color: color,
-                        backgroundColor: color.withValues(alpha: 0.2),
-                      ),
+                    _ScoreRing(
+                      value: feedback.overallScore / 100,
+                      text: feedback.overallScore.toString(),
+                      color: color,
                     ),
-                    Text(
-                      feedback.overallScore.toString(),
-                      style:
-                          Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                              ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Attempt $attemptNumber',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${attempt.wordCount} words',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Criteria Grid (Always visible)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = (constraints.maxWidth - 8) / 2;
-
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: feedback.criteria.map<Widget>((c) {
-                    return Container(
-                      width: itemWidth,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color:
-                            scoreColor(scheme, c.score).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              c.criterion.label,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: scoreColor(scheme, c.score),
-                                  ),
-                            ),
-                          ),
                           Text(
-                            '${c.score}/100',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: scoreColor(scheme, c.score),
-                                ),
+                            'Attempt $attemptNumber',
+                            style: textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${attempt.wordCount} words',
+                            style: textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
                       ),
-                    );
-                  }).toList(),
-                );
-              },
+                    ),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 250),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Criteria grid (always visible)
+                _CriteriaGrid(items: criteria),
+
+                // Expanded details
+                if (isExpanded) ...[
+                  const SizedBox(height: 20),
+                  Divider(color: scheme.outlineVariant, height: 1),
+
+                  if (attempt.text.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    _ResponseBox(text: attempt.text),
+                  ],
+
+                  if (feedback.strengths.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    FeedbackListCard(
+                      title: 'What to keep',
+                      items: feedback.strengths,
+                      icon: Icons.thumb_up_outlined,
+                      color: scheme.primary,
+                      background:
+                          scheme.primaryContainer.withValues(alpha: 0.3),
+                      foreground: scheme.primary,
+                    ),
+                  ],
+
+                  if (feedback.improvements.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    FeedbackListCard(
+                      title: 'What to improve',
+                      items: feedback.improvements,
+                      icon: Icons.auto_fix_high,
+                      color: scheme.tertiary,
+                      background:
+                          scheme.tertiaryContainer.withValues(alpha: 0.3),
+                      foreground: scheme.tertiary,
+                    ),
+                  ],
+                ],
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-            // Expanded Details
-            if (isExpanded) ...[
-              const SizedBox(height: 24),
-              const Divider(),
+/// Circular overall-score indicator.
+class _ScoreRing extends StatelessWidget {
+  const _ScoreRing({
+    required this.value,
+    required this.text,
+    required this.color,
+  });
 
-              // Written text (read-only)
-              if (attempt.text.isNotEmpty) ...[
+  final double value;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 60,
+          height: 60,
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: 5,
+            strokeCap: StrokeCap.round,
+            color: color,
+            backgroundColor: color.withValues(alpha: 0.18),
+          ),
+        ),
+        Text(
+          text,
+          style: textTheme.titleMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Lightweight view-model for a criterion chip (keeps the grid type-agnostic).
+class _CriterionData {
+  const _CriterionData({
+    required this.label,
+    required this.scoreText,
+    required this.color,
+  });
+
+  final String label;
+  final String scoreText;
+  final Color color;
+}
+
+/// Responsive 2/3-column grid of criterion score chips.
+class _CriteriaGrid extends StatelessWidget {
+  const _CriteriaGrid({required this.items});
+
+  final List<_CriterionData> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 8.0;
+        final columns = constraints.maxWidth >= 480 ? 3 : 2;
+        final itemWidth =
+            (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final item in items)
+              SizedBox(
+                width: itemWidth,
+                child: _CriterionChip(data: item),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CriterionChip extends StatelessWidget {
+  const _CriterionChip({required this.data});
+
+  final _CriterionData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: data.color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              data.label,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.labelMedium?.copyWith(color: data.color),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            data.scoreText,
+            style: textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: data.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The user's original written response, shown read-only.
+class _ResponseBox extends StatelessWidget {
+  const _ResponseBox({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your response',
+          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            text,
+            style: textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Centered icon + title (+ optional message) used for error and empty states.
+class _MessageState extends StatelessWidget {
+  const _MessageState({
+    required this.icon,
+    required this.title,
+    this.message,
+    this.isError = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final iconColor = isError ? scheme.error : scheme.onSurfaceVariant;
+
+    return SafeArea(
+      top: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 36, color: iconColor),
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  'Your response',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  title,
+                  textAlign: TextAlign.center,
+                  style: textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
+                if (message != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    message!,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
-                  child: Text(
-                    attempt.text,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.5,
-                        ),
-                  ),
-                ),
+                ],
               ],
-
-              const SizedBox(height: 16),
-
-              // Strengths
-              if (feedback.strengths.isNotEmpty)
-                FeedbackListCard(
-                  title: 'What to keep',
-                  items: feedback.strengths,
-                  icon: Icons.thumb_up_outlined,
-                  color: scheme.primary,
-                  background:
-                      scheme.primaryContainer.withValues(alpha: 0.3),
-                  foreground: scheme.primary,
-                ),
-
-              const SizedBox(height: 12),
-
-              // Improvements
-              if (feedback.improvements.isNotEmpty)
-                FeedbackListCard(
-                  title: 'What to improve',
-                  items: feedback.improvements,
-                  icon: Icons.auto_fix_high,
-                  color: scheme.tertiary,
-                  background:
-                      scheme.tertiaryContainer.withValues(alpha: 0.3),
-                  foreground: scheme.tertiary,
-                ),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
     );
