@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wriport/core/app_constants.dart';
+import 'package:wriport/domain/models/criterion_score.dart';
 import 'package:wriport/domain/models/feedback.dart';
 import 'package:wriport/providers.dart';
 import 'package:wriport/router.dart';
@@ -509,13 +510,16 @@ class _RubricCard extends StatelessWidget {
                 previousScore: () {
                   if (!hasPrevious) return null;
 
-                  final matchingPrevCriterion = prevFeedback.criteria.firstWhere(
-                    (prev) =>
-                        prev.criterion.label.trim().toLowerCase() ==
-                        feedback.criteria[i].criterion.label.trim().toLowerCase(),
-                  );
+                  final currentId = feedback.criteria[i].criterion.id;
+                  final matchingPrevCriterion = prevFeedback.criteria
+                      .cast<CriterionScore?>()
+                      .firstWhere(
+                        (prev) => prev?.criterion.id == currentId,
+                        orElse: () => null,
+                      );
 
-                  return matchingPrevCriterion.score != -1
+                  return (matchingPrevCriterion != null &&
+                          matchingPrevCriterion.score != -1)
                       ? matchingPrevCriterion.score
                       : null;
                 }(),
@@ -608,82 +612,6 @@ class _FeedbackActions extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _FeedbackListCard extends StatelessWidget {
-  const _FeedbackListCard({
-    required this.title,
-    required this.items,
-    required this.icon,
-    required this.color,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String title;
-  final List<String> items;
-  final IconData icon;
-  final Color color;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final item in items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 7),
-                    child: Icon(Icons.circle, size: 6, color: foreground),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: foreground,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
     );
   }
 }
@@ -957,7 +885,7 @@ class _HistoryCard extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 if (feedback.strengths.isNotEmpty)
-                  _FeedbackListCard(
+                  FeedbackListCard(
                     title: 'What to keep',
                     items: feedback.strengths,
                     icon: Icons.thumb_up_outlined,
@@ -969,7 +897,7 @@ class _HistoryCard extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 if (feedback.improvements.isNotEmpty)
-                  _FeedbackListCard(
+                  FeedbackListCard(
                     title: 'What to improve',
                     items: feedback.improvements,
                     icon: Icons.auto_fix_high,

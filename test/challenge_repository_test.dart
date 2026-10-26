@@ -23,9 +23,7 @@ void main() {
     });
 
     // Increment 3 requirement: the two new categories must ship with 3-5
-    // challenges each. NOTE: this currently FAILS against the repo data
-    // (every category has exactly 2 challenges) — it is kept as a hard
-    // check so the requirement is enforced by CI, not by review.
+    // challenges each.
     test('every category has at least 3 challenges', () {
       for (final category in Category.values) {
         final challenges = repository.getChallenges(category);

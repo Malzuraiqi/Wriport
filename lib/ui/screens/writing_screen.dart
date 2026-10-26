@@ -25,14 +25,6 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   late final TextEditingController _textController;
   int _wordCount = 0;
 
-  static int _countWords(String text) {
-    return text
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .length;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -60,7 +52,7 @@ class _WritingScreenState extends ConsumerState<WritingScreen> {
   }
 
   void _updateWordCount() {
-    setState(() => _wordCount = _countWords(_textController.text));
+    setState(() => _wordCount = countWords(_textController.text));
   }
 
   @override
